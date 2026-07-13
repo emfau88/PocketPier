@@ -2,7 +2,8 @@ import Phaser from 'phaser';
 import { AudioService } from '../core/AudioService';
 import { COLORS, TRIP_CASTS } from '../core/GameConfig';
 import { PortalBridge } from '../core/PortalBridge';
-import { SaveService } from '../core/SaveService';
+import { BOAT_REPAIR_COSTS, SaveService, type EquipmentId } from '../core/SaveService';
+import { ACHIEVEMENTS, QuestService, questById } from '../gameplay/QuestService';
 import { FISH, fishFlipXForDirection, type Fish } from '../gameplay/Fish';
 import { TREASURES, type TreasureId } from '../gameplay/Treasure';
 import { TripState } from '../gameplay/TripState';
@@ -13,20 +14,19 @@ type Target={fish:Fish;sprite:Phaser.GameObjects.Image;aura:Phaser.GameObjects.A
 export class PierGameplayScene extends Phaser.Scene {
   private phase:Phase='CAST'; private trip!:TripState; private castQuality=0; private marker=0; private markerDir=1;
   private surface!:Phaser.GameObjects.Container; private underwater?:Phaser.GameObjects.Container; private overlay?:Phaser.GameObjects.Container;
-  private title!:Phaser.GameObjects.Text; private help!:Phaser.GameObjects.Text; private meter!:Phaser.GameObjects.Graphics;
+  private title!:Phaser.GameObjects.Text; private help!:Phaser.GameObjects.Text; private meter!:Phaser.GameObjects.Graphics; private progressText!:Phaser.GameObjects.Text;
   private angler!:Phaser.GameObjects.Image; private bobber!:Phaser.GameObjects.Arc;
   private hookPos=new Phaser.Math.Vector2(480,92); private hookTarget=new Phaser.Math.Vector2(480,92); private anchor=new Phaser.Math.Vector2(480,70);
   private rope!:Phaser.GameObjects.Graphics; private hookArt!:Phaser.GameObjects.Graphics; private captureArt!:Phaser.GameObjects.Graphics;
   private hookSprite!:Phaser.GameObjects.Image;
   private lineText!:Phaser.GameObjects.Text; private basketText!:Phaser.GameObjects.Text; private diveHint!:Phaser.GameObjects.Text;
   private targets:Target[]=[]; private caught:{fish:Fish;sprite:Phaser.GameObjects.Image}[]=[]; private usedSlots=0; private maxSlots=2; private treasureFound=false;
-  private treasure?:Phaser.GameObjects.Container; private maxLinePx=590; private lineMeters=22; private pointerSteering=false; private inputLockedUntil=0;
+  private treasure?:Phaser.GameObjects.Container; private maxLinePx=590; private lineMeters=22; private hookMoveSpeed=165; private reelSpeed=340; private basketDrag=.025; private baitLevel=0; private pointerSteering=false; private inputLockedUntil=0;
   private trail:Phaser.Math.Vector2[]=[]; private retractIndex=0;
   private keys!:Record<string,Phaser.Input.Keyboard.Key>;
   private reducedMotion=false;
-  private surfaceWaterMask?:Phaser.Display.Masks.GeometryMask;
   private surfaceClouds:{sprite:Phaser.GameObjects.Image;speed:number}[]=[];
-  private cooler!:Phaser.GameObjects.Image;private collectionModal?:Phaser.GameObjects.Container;private modalOpen=false;
+  private cooler!:Phaser.GameObjects.Image;private tacklebox!:Phaser.GameObjects.Image;private boatSprite!:Phaser.GameObjects.Image;private boatZone!:Phaser.GameObjects.Zone;private noticeBoard!:Phaser.GameObjects.Zone;private collectionModal?:Phaser.GameObjects.Container;private tackleModal?:Phaser.GameObjects.Container;private jobsModal?:Phaser.GameObjects.Container;private boatModal?:Phaser.GameObjects.Container;private modalOpen=false;
   private currentTreasureId?:TreasureId;
 
   constructor(){super('Pier')}
@@ -41,6 +41,9 @@ export class PierGameplayScene extends Phaser.Scene {
     this.input.on('pointerdown',(p:Phaser.Input.Pointer)=>{
       if(this.modalOpen)return;
       if(this.phase==='CAST'&&this.cooler?.getBounds().contains(p.worldX,p.worldY)){this.openCollection('fish');return}
+      if(this.phase==='CAST'&&this.tacklebox?.getBounds().contains(p.worldX,p.worldY)){this.openTackleBox();return}
+      if(this.phase==='CAST'&&this.noticeBoard?.getBounds().contains(p.worldX,p.worldY)){this.openJobs('jobs');return}
+      if(this.phase==='CAST'&&this.boatZone?.getBounds().contains(p.worldX,p.worldY)){this.openBoatRepair();return}
       this.pointerSteering=true;this.hookTarget.set(p.worldX,p.worldY);this.press();
     });
     this.input.on('pointermove',(p:Phaser.Input.Pointer)=>{if(this.pointerSteering)this.hookTarget.set(p.worldX,p.worldY)});
@@ -48,46 +51,43 @@ export class PierGameplayScene extends Phaser.Scene {
     this.beginCast();
   }
   private drawSurface(){
-    const bg=this.add.image(480,270,'bg-pier-cloudless').setDisplaySize(960,540);
+    const bg=this.add.image(480,270,'bg-pier-remaster').setDisplaySize(960,540);
     const shade=this.add.rectangle(480,270,960,540,0x153a4a,.06);
-    const cloudA=this.add.image(165,126,'surface-clouds','cloud-a').setDisplaySize(216,88);
-    const cloudB=this.add.image(486,145,'surface-clouds','cloud-b').setDisplaySize(188,87);
-    const cloudC=this.add.image(820,180,'surface-clouds','cloud-c').setDisplaySize(208,85);
+    const cloudA=this.add.image(165,66,'surface-clouds','cloud-a').setDisplaySize(216,88);
+    const cloudB=this.add.image(486,82,'surface-clouds','cloud-b').setDisplaySize(188,87);
+    const cloudC=this.add.image(820,102,'surface-clouds','cloud-c').setDisplaySize(208,85);
     this.surfaceClouds=[{sprite:cloudA,speed:1.45},{sprite:cloudB,speed:1.05},{sprite:cloudC,speed:1.25}];
     const foregroundMaskSource=this.add.graphics().setVisible(false);
     foregroundMaskSource.fillStyle(0xffffff,1)
-      .fillRect(39,111,34,248)
-      .fillRect(42,119,126,37)
-      .fillRect(88,155,39,65)
-      .beginPath().moveTo(0,137).lineTo(55,150).lineTo(56,329).lineTo(0,354).closePath().fillPath();
-    const foregroundOccluder=this.add.image(480,270,'bg-pier-cloudless').setDisplaySize(960,540).setMask(foregroundMaskSource.createGeometryMask());
-    const waterMaskSource=this.add.graphics().setVisible(false);
-    waterMaskSource.fillStyle(0xffffff,1).beginPath().moveTo(0,259).lineTo(960,259).lineTo(960,540).lineTo(210,540).lineTo(210,500).lineTo(252,462).lineTo(282,423).lineTo(337,391).lineTo(395,328).lineTo(0,328).closePath().fillPath();
-    this.surfaceWaterMask=waterMaskSource.createGeometryMask();
-    const farWater=this.add.image(480,404,'menu-water').setDisplaySize(990,590).setAlpha(.12).setBlendMode(Phaser.BlendModes.SOFT_LIGHT).setMask(this.surfaceWaterMask);
-    const nearWater=this.add.image(500,425,'menu-water').setDisplaySize(1020,610).setAlpha(.09).setBlendMode(Phaser.BlendModes.SCREEN).setMask(this.surfaceWaterMask);
+      .fillRect(43,113,32,240)
+      .beginPath().moveTo(43,120).lineTo(166,136).lineTo(166,157).lineTo(43,143).closePath().fillPath()
+      .fillRect(107,139,8,25)
+      .beginPath().moveTo(105,157).lineTo(121,157).lineTo(128,175).lineTo(124,210).lineTo(96,210).lineTo(92,175).closePath().fillPath()
+      .beginPath().moveTo(914,183).lineTo(925,183).lineTo(931,193).lineTo(928,203).lineTo(926,258).lineTo(903,258).lineTo(906,203).lineTo(903,193).closePath().fillPath();
+    const foregroundOccluder=this.add.image(480,270,'bg-pier-remaster').setDisplaySize(960,540).setMask(foregroundMaskSource.createGeometryMask());
     const rearPostRipples=this.makePostRipples(false);
-    this.cooler=this.add.image(335,328,'hub-cooler').setDisplaySize(78,56).setInteractive({useHandCursor:true}).setDepth(4);
+    const noticeBoardArt=this.add.image(165,320,'hub-notice-board').setDisplaySize(90,116).setDepth(3);
+    this.noticeBoard=this.add.zone(165,320,118,140).setInteractive({useHandCursor:true}).setDepth(6);
+    this.cooler=this.add.image(175,420,'hub-cooler').setDisplaySize(82,59).setInteractive({useHandCursor:true}).setDepth(4);
+    this.tacklebox=this.add.image(210,448,'hub-tacklebox-closed').setDisplaySize(82,59).setInteractive({useHandCursor:true}).setDepth(4);
     const save=SaveService.load(),stickers:Phaser.GameObjects.Arc[]=[];
+    this.boatSprite=this.add.image(620,315,'hub-boat-states',this.boatFrame(save)).setDisplaySize(180,180).setOrigin(.5,this.boatOriginY(save)).setDepth(4);
+    this.boatZone=this.add.zone(620,335,175,82).setInteractive({useHandCursor:true}).setDepth(6);
     const stickerColors=[0xffd166,0xef6b4a,0x69d6c5];
-    for(let i=0;i<save.coolerStickerTier;i++)stickers.push(this.add.circle(318+i*11,334,4,stickerColors[i]).setStrokeStyle(1,0xfff6dc).setDepth(5));
-    this.angler=this.add.image(245,315,'angler-chair-perspective').setDisplaySize(330,220).setDepth(5);
+    for(let i=0;i<Math.min(3,save.coolerStickerTier+save.harborStickerCount);i++)stickers.push(this.add.circle(156+i*11,426,4,stickerColors[i]).setStrokeStyle(1,0xfff6dc).setDepth(5));
+    this.angler=this.add.image(330,350,'angler-chair-perspective').setDisplaySize(315,210).setDepth(5);
     const frontPostRipples=this.makePostRipples(true);
-    this.bobber=this.add.circle(385,270,8,0xef6b4a).setStrokeStyle(3,0xfff6dc).setVisible(false).setDepth(8);
-    const top=this.add.rectangle(480,0,960,68,COLORS.navy,.42).setOrigin(.5,0).setDepth(10);
+    this.bobber=this.add.circle(585,315,8,0xef6b4a).setStrokeStyle(3,0xfff6dc).setVisible(false).setDepth(8);
     const zone=this.add.text(22,22,'SUNNY PIER',{fontSize:'18px',fontStyle:'bold',color:'#fff6dc'}).setDepth(11);
     const level=SaveService.levelProgress(save.xp),xpLabel=level.maxed?`${save.xp} XP`:`${level.current}/${level.needed} XP`;
-    const progress=this.add.text(938,22,`LEVEL ${level.level}   ${xpLabel}   COINS ${save.coins}`,{fontSize:'15px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(1,0).setDepth(11);
-    const coolerHint=this.add.text(335,364,'FISHER BOOK',{fontSize:'11px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#153a4a'}).setPadding(6,3).setOrigin(.5).setDepth(9);
-    this.surface.add([bg,cloudA,cloudB,cloudC,foregroundOccluder,shade,farWater,nearWater,...rearPostRipples,this.cooler,...stickers,this.angler,...frontPostRipples,this.bobber,top,zone,progress,coolerHint]);
+    this.progressText=this.add.text(938,22,`LEVEL ${level.level}   ${xpLabel}   COINS ${save.coins}`,{fontSize:'15px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(1,0).setDepth(11);
+    this.surface.add([bg,cloudA,cloudB,cloudC,foregroundOccluder,shade,...rearPostRipples,noticeBoardArt,this.noticeBoard,this.cooler,this.tacklebox,this.boatSprite,this.boatZone,...stickers,this.angler,...frontPostRipples,this.bobber,zone,this.progressText]);
     if(!this.reducedMotion){
-      this.tweens.add({targets:farWater,x:495,y:406,duration:6800,yoyo:true,repeat:-1,ease:'Sine.inOut'});
-      this.tweens.add({targets:nearWater,x:476,y:428,duration:4700,yoyo:true,repeat:-1,ease:'Sine.inOut'});
       this.scheduleSurfaceGull(true);
     }
   }
   private makePostRipples(front:boolean){
-    const posts=[{x:253,y:466,w:35,delay:0,duration:3100},{x:365,y:405,w:27,delay:900,duration:3700}];
+    const posts=[{x:390,y:442,w:35,delay:0,duration:3100},{x:500,y:374,w:27,delay:900,duration:3700}];
     return posts.map(({x,y,w,delay,duration})=>{
       const ripple=this.add.graphics().setPosition(x,y).setAlpha(front?.52:.38);
       ripple.lineStyle(front?2:3,front?0xfff6dc:0x69d6c5,1).beginPath();
@@ -100,7 +100,7 @@ export class PierGameplayScene extends Phaser.Scene {
   }
   private beginCast(){
     this.clearOverlay();this.surface.setVisible(true);this.underwater?.destroy(true);this.underwater=undefined;this.phase='CAST';this.marker=0;this.markerDir=1;this.inputLockedUntil=this.time.now+250;
-    this.title.setText(`DIVE ${TRIP_CASTS-this.trip.castsLeft+1} OF ${TRIP_CASTS}`);this.help.setVisible(true).setText('TAP / SPACE TO CAST');this.bobber.setVisible(false);
+    this.title.setText(`DIVE ${TRIP_CASTS-this.trip.castsLeft+1} OF ${TRIP_CASTS}`);this.help.setVisible(false);this.bobber.setVisible(false);
   }
   private press(){
     if(this.modalOpen||this.time.now<this.inputLockedUntil)return;AudioService.unlock();
@@ -108,16 +108,20 @@ export class PierGameplayScene extends Phaser.Scene {
   }
   private cast(){
     this.castQuality=1;this.trip.useCast();this.phase='FLIGHT';this.hideCastMeter();AudioService.cast();this.help.setText('CASTING…');
-    this.bobber.setVisible(true).setPosition(385,270).setScale(.5);
-    this.tweens.add({targets:this.bobber,x:620,y:350,scale:1,duration:500,ease:'Quad.easeOut',onComplete:()=>{
-      AudioService.splash();this.smallSplash(620,350);this.waterRing(620,353);
-      if(!this.reducedMotion)this.tweens.add({targets:this.bobber,y:346,scaleX:.92,scaleY:1.08,duration:145,yoyo:true,repeat:1,ease:'Sine.inOut'});
-      this.time.delayedCall(240,()=>this.waterRing(620,353,.7));
+    this.bobber.setVisible(true).setPosition(555,278).setScale(.5);
+    this.tweens.add({targets:this.bobber,x:760,y:430,scale:1,duration:500,ease:'Quad.easeOut',onComplete:()=>{
+      AudioService.splash();this.smallSplash(760,430);this.waterRing(760,433);
+      if(!this.reducedMotion)this.tweens.add({targets:this.bobber,y:426,scaleX:.92,scaleY:1.08,duration:145,yoyo:true,repeat:1,ease:'Sine.inOut'});
+      this.time.delayedCall(240,()=>this.waterRing(760,433,.7));
       this.time.delayedCall(620,()=>this.startUnderwater());
     }});
   }
   private startUnderwater(){
     this.phase='UNDERWATER';this.surface.setVisible(false);this.help.setVisible(false);this.title.setText('');this.hookPos.set(480,92);this.hookTarget.copy(this.hookPos);this.usedSlots=0;this.caught=[];this.treasureFound=false;this.currentTreasureId=undefined;this.targets=[];
+    const equipment=SaveService.load().equipment;
+    this.maxLinePx=590+equipment.line*45;this.lineMeters=22+equipment.line*2;
+    this.hookMoveSpeed=165*(1+equipment.reel*.07);this.reelSpeed=340*(1+equipment.reel*.08);
+    this.maxSlots=2+(equipment.basket>=3?1:0);this.basketDrag=Math.max(.01,.025-equipment.basket*.005);this.baitLevel=equipment.bait;
     const c=this.underwater=this.add.container(0,0);c.setDepth(20);
     c.add(this.add.image(480,270,'bg-underwater').setDisplaySize(960,540));
     for(let i=0;i<13;i++)c.add(this.add.circle(60+i*78,105+(i%3)*38,3+(i%2)*2,0xb9f0e8,.4));
@@ -136,7 +140,7 @@ export class PierGameplayScene extends Phaser.Scene {
     const specs=[
       {fish:FISH[0],x:280,y:195,slots:1,speed:32}, {fish:FISH[1],x:690,y:175,slots:1,speed:40},
       {fish:FISH[2],x:420,y:330,slots:1,speed:46}, {fish:FISH[3],x:745,y:350,slots:1,speed:54},
-      {fish:FISH[5],x:310,y:445,slots:2,speed:58}
+      {fish:Math.random()<.18+this.baitLevel*.04?FISH[5]:FISH[4],x:310,y:445,slots:2,speed:58}
     ];
     specs.forEach((s,i)=>{const rarityColor=s.fish.rarity==='Rare'?0xffd166:s.fish.rarity==='Uncommon'?0x69d6c5:0xfff6dc;const direction=i%2===0?1:-1;const aura=this.add.circle(s.x,s.y,s.slots===2?47:34,rarityColor,s.fish.rarity==='Common'?.08:.2).setDepth(29);const sprite=this.add.image(s.x,s.y,s.fish.id==='sardine'?'fish-sardine':'fish-minnow').setDisplaySize(s.slots===2?112:76,s.slots===2?68:48).setTint(s.fish.color).setFlipX(fishFlipXForDirection(direction)).setDepth(30);const badge=this.add.text(s.x,s.y-37,s.fish.rarity==='Rare'?'★':s.fish.rarity==='Uncommon'?'◆':'•',{fontSize:s.fish.rarity==='Rare'?'18px':'14px',fontStyle:'bold',color:`#${rarityColor.toString(16).padStart(6,'0')}`}).setOrigin(.5).setDepth(31);const target:Target={...s,sprite,aura,badge,capture:0,direction,baseY:s.y,phase:i*1.2};this.targets.push(target);c.add([aura,sprite,badge])});
   }
@@ -149,7 +153,7 @@ export class PierGameplayScene extends Phaser.Scene {
     if(Phaser.Input.Keyboard.JustDown(this.keys.E)||Phaser.Input.Keyboard.JustDown(this.keys.SPACE)){this.startRetract();return}
     const d=delta/1000,move=new Phaser.Math.Vector2(),before=this.hookPos.clone();
     if(this.keys.A.isDown||this.keys.LEFT.isDown)move.x--;if(this.keys.D.isDown||this.keys.RIGHT.isDown)move.x++;if(this.keys.W.isDown||this.keys.UP.isDown)move.y--;if(this.keys.S.isDown||this.keys.DOWN.isDown)move.y++;
-    const tinySlowdown=1-Math.min(this.caught.length*.025,.05),speed=165*tinySlowdown;
+    const tinySlowdown=1-Math.min(this.caught.length*this.basketDrag,.05),speed=this.hookMoveSpeed*tinySlowdown;
     if(move.lengthSq()>0)this.hookPos.add(move.normalize().scale(speed*d));else if(this.pointerSteering)this.hookPos.add(this.hookTarget.clone().subtract(this.hookPos).limit(speed*d));
     this.hookPos.x=Phaser.Math.Clamp(this.hookPos.x,42,918);this.hookPos.y=Phaser.Math.Clamp(this.hookPos.y,82,502);
     if(this.isBlocked(this.hookPos))this.hookPos.copy(before);
@@ -190,10 +194,11 @@ export class PierGameplayScene extends Phaser.Scene {
   private refreshHud(){if(!this.lineText)return;const meters=this.routeLength()/this.maxLinePx*this.lineMeters;this.lineText.setText(`LINE  ${(this.lineMeters-meters).toFixed(1)} m LEFT`);this.basketText.setText(`BASKET  ${this.usedSlots} / ${this.maxSlots}${this.treasureFound?'   ★':''}`)}
   private startRetract(){if(this.phase!=='UNDERWATER')return;this.phase='RETRACTING';this.pointerSteering=false;this.diveHint?.setVisible(false);if(this.trail[this.trail.length-1].distance(this.hookPos)>1)this.trail.push(this.hookPos.clone());this.retractIndex=this.trail.length-2;this.showToast('Following the line home…')}
   private updateRetract(delta:number){
-    const step=340*delta/1000;if(this.retractIndex<0){this.hookPos.copy(this.anchor);this.finishDive();return}const target=this.trail[this.retractIndex],v=target.clone().subtract(this.hookPos);if(v.length()<=step){this.hookPos.copy(target);this.trail.length=this.retractIndex+1;this.retractIndex--}else this.hookPos.add(v.setLength(step));this.drawHookAndRope();this.refreshHud();
+    const step=this.reelSpeed*delta/1000;if(this.retractIndex<0){this.hookPos.copy(this.anchor);this.finishDive();return}const target=this.trail[this.retractIndex],v=target.clone().subtract(this.hookPos);if(v.length()<=step){this.hookPos.copy(target);this.trail.length=this.retractIndex+1;this.retractIndex--}else this.hookPos.add(v.setLength(step));this.drawHookAndRope();this.refreshHud();
   }
   private finishDive(){
     this.phase='RESULT';this.underwater?.destroy(true);this.underwater=undefined;this.surface.setVisible(true);this.help.setVisible(false);let totalCoins=0,totalXp=0;
+    this.trip.addDiveCatchCount(this.caught.length);
     const saved=SaveService.load(),records:{fish:Fish;weight:number;isNew:boolean;isRecord:boolean}[]=[];
     this.caught.forEach(({fish})=>{
       const weight=Phaser.Math.FloatBetween(fish.weightMin,fish.weightMax),coins=Math.round(fish.value*weight),earlier=this.trip.catches.filter(c=>c.fish.id===fish.id),best=Math.max(saved.fishStats[fish.id]?.bestWeight??0,...earlier.map(c=>c.weight),0);
@@ -223,7 +228,7 @@ export class PierGameplayScene extends Phaser.Scene {
     });
   }
   private flySurfaceGull(){
-    const count=Phaser.Math.Between(2,4),startY=Phaser.Math.Between(104,168),birds:Phaser.GameObjects.Graphics[]=[];
+    const count=Phaser.Math.Between(2,4),startY=Phaser.Math.Between(76,102),birds:Phaser.GameObjects.Graphics[]=[];
     for(let i=0;i<count;i++){
       const bird=this.add.graphics().setPosition(i*Phaser.Math.Between(18,31),Phaser.Math.Between(-6,6));
       const size=Phaser.Math.Between(4,7);bird.lineStyle(2,0x153a4a,1).beginPath().moveTo(-size,0).lineTo(0,-Math.max(2,size*.45)).lineTo(size,0).strokePath();birds.push(bird);
@@ -264,14 +269,155 @@ export class PierGameplayScene extends Phaser.Scene {
     }
     this.collectionModal=this.add.container(0,0,items).setDepth(220);
   }
-  private closeCollection(){this.collectionModal?.destroy(true);this.collectionModal=undefined;this.modalOpen=false;if(this.phase==='CAST')this.help.setVisible(true)}
+  private finishModalClose(){
+    this.inputLockedUntil=Math.max(this.inputLockedUntil,this.time.now+150);
+    this.modalOpen=false;
+    if(this.phase==='CAST')this.help.setVisible(false);
+  }
+  private closeCollection(){this.collectionModal?.destroy(true);this.collectionModal=undefined;this.finishModalClose()}
+  private openTackleBox(){
+    this.modalOpen=true;this.pointerSteering=false;this.help.setVisible(false);this.tackleModal?.destroy(true);
+    const saved=SaveService.load(),items:Phaser.GameObjects.GameObject[]=[];
+    const shade=this.add.rectangle(480,270,960,540,0x102f3d,.78).setInteractive();
+    const paper=this.add.rectangle(480,280,850,470,0xfff6dc,.99).setStrokeStyle(8,COLORS.navy);
+    const title=this.add.text(95,62,'THE TACKLE BOX',{fontSize:'29px',fontStyle:'bold',color:'#153a4a'});
+    const subtitle=this.add.text(95,96,'PREPARE YOUR GEAR FOR THE NEXT CATCH',{fontSize:'13px',fontStyle:'bold',color:'#4b6973'});
+    const coins=this.add.text(815,78,`COINS  ${saved.coins}`,{fontSize:'16px',fontStyle:'bold',color:'#153a4a'}).setOrigin(1,.5);
+    const close=this.add.text(866,65,'X',{fontSize:'24px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(12,7).setOrigin(.5).setInteractive({useHandCursor:true});
+    close.on('pointerdown',()=>this.closeTackleBox());
+    const caseArt=this.add.image(245,245,'hub-tacklebox-open').setDisplaySize(270,205);
+    const intro=this.add.text(245,370,'Every upgrade is gentle:\nmore comfort, never a guaranteed catch.',{fontSize:'13px',fontStyle:'bold',align:'center',color:'#153a4a',wordWrap:{width:270}}).setOrigin(.5);
+    items.push(shade,paper,title,subtitle,coins,close,caseArt,intro);
+    const cards:[string,EquipmentId,string,string][]=[
+      ['line-icon','line','LINE','More range: +2 m per tier.'],
+      ['reel-icon','reel','REEL','Faster hook and reel-in.'],
+      ['basket-icon','basket','BASKET','Less drag; tier 3 adds a slot.'],
+      ['bait-icon','bait','BAIT','Slightly better rare-fish odds.']
+    ];
+    cards.forEach(([frame,id,name,description],i)=>{
+      const col=i%2,row=Math.floor(i/2),x=555+col*155,y=185+row*180;
+      const card=this.add.rectangle(x,y,140,150,0xe8f5e9,.98).setStrokeStyle(3,COLORS.navy);
+      const icon=this.add.image(x,y-36,'upgrade-icons',frame).setDisplaySize(68,68);
+      const label=this.add.text(x,y+20,name,{fontSize:'16px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
+      const detail=this.add.text(x,y+42,description,{fontSize:'10px',fontStyle:'bold',align:'center',color:'#4b6973',wordWrap:{width:120}}).setOrigin(.5);
+      const level=saved.equipment[id],cost=SaveService.nextEquipmentCost(saved,id),buttonText=cost===undefined?'MAXED':`BUY  ${cost}`;
+      const tier=this.add.text(x,y+61,`TIER ${level} / 3`,{fontSize:'11px',fontStyle:'bold',color:'#ef6b4a'}).setOrigin(.5);
+      const button=this.add.text(x,y+84,buttonText,{fontSize:'12px',fontStyle:'bold',color:'#fff6dc',backgroundColor:cost===undefined?'#71858b':saved.coins>=cost?'#ef6b4a':'#9aa8a3'}).setPadding(8,5).setOrigin(.5);
+      if(cost!==undefined){button.setInteractive({useHandCursor:true});button.on('pointerdown',()=>this.confirmEquipmentPurchase(id,name,cost));}
+      items.push(card,icon,label,detail,tier,button);
+    });
+    const note=this.add.text(670,490,'Prices: 150  •  250  •  400 coins',{fontSize:'12px',fontStyle:'bold',color:'#4b6973'}).setOrigin(.5);
+    items.push(note);this.tackleModal=this.add.container(0,0,items).setDepth(220);
+  }
+  private confirmEquipmentPurchase(id:EquipmentId,name:string,cost:number){
+    const save=SaveService.load(),items:Phaser.GameObjects.GameObject[]=[];
+    const shade=this.add.rectangle(480,270,960,540,0x102f3d,.2).setInteractive();
+    const card=this.add.rectangle(480,270,370,195,0xfff6dc,1).setStrokeStyle(6,COLORS.navy);
+    const heading=this.add.text(480,220,`UPGRADE ${name}?`,{fontSize:'22px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
+    const copy=this.add.text(480,258,`Spend ${cost} coins?\nYou have ${save.coins}.`,{fontSize:'15px',fontStyle:'bold',align:'center',color:'#4b6973'}).setOrigin(.5);
+    const cancel=this.add.text(400,322,'CANCEL',{fontSize:'14px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#a9e5dc'}).setPadding(11,7).setOrigin(.5).setInteractive({useHandCursor:true});
+    const confirm=this.add.text(560,322,`BUY  ${cost}`,{fontSize:'14px',fontStyle:'bold',color:'#fff6dc',backgroundColor:save.coins>=cost?'#ef6b4a':'#9aa8a3'}).setPadding(11,7).setOrigin(.5).setInteractive({useHandCursor:true});
+    const prompt=this.add.container(0,0,[shade,card,heading,copy,cancel,confirm]).setDepth(230);cancel.on('pointerdown',()=>prompt.destroy(true));
+    confirm.on('pointerdown',()=>{if(!SaveService.purchaseEquipment(save,id)){this.showToast('Not enough coins.');prompt.destroy(true);return}SaveService.save(save);prompt.destroy(true);this.openTackleBox();this.showToast(`${name} upgraded!`)});
+  }
+  private closeTackleBox(){this.tackleModal?.destroy(true);this.tackleModal=undefined;this.finishModalClose()}
+  private openJobs(tab:'jobs'|'badges'){
+    this.modalOpen=true;this.pointerSteering=false;this.help.setVisible(false);this.jobsModal?.destroy(true);
+    const save=SaveService.load();QuestService.ensureActive(save);SaveService.save(save);const items:Phaser.GameObjects.GameObject[]=[];
+    const shade=this.add.rectangle(480,270,960,540,0x102f3d,.78).setInteractive();
+    const paper=this.add.rectangle(480,280,850,470,0xfff6dc,.99).setStrokeStyle(8,COLORS.navy);
+    const title=this.add.text(95,62,'HARBOR JOBS',{fontSize:'29px',fontStyle:'bold',color:'#153a4a'});
+    const subtitle=this.add.text(95,88,'COMPLETE TRIPS • EARN COINS, XP & STICKERS',{fontSize:'13px',fontStyle:'bold',color:'#4b6973'});
+    const close=this.add.text(866,65,'X',{fontSize:'24px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(12,7).setOrigin(.5).setInteractive({useHandCursor:true});
+    close.on('pointerdown',()=>this.closeJobs());
+    const jobsTab=this.add.rectangle(330,128,205,42,tab==='jobs'?COLORS.coral:0xa9e5dc).setStrokeStyle(3,COLORS.navy).setInteractive({useHandCursor:true});
+    const jobsText=this.add.text(330,128,'JOBS',{fontSize:'17px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
+    const badgesTab=this.add.rectangle(550,128,205,42,tab==='badges'?COLORS.coral:0xa9e5dc).setStrokeStyle(3,COLORS.navy).setInteractive({useHandCursor:true});
+    const badgesText=this.add.text(550,128,'BADGES',{fontSize:'17px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
+    jobsTab.on('pointerdown',()=>this.openJobs('jobs'));badgesTab.on('pointerdown',()=>this.openJobs('badges'));
+    const notes=this.add.image(205,296,'harbor-notes').setDisplaySize(220,238);
+    items.push(shade,paper,title,subtitle,close,jobsTab,jobsText,badgesTab,badgesText,notes);
+    if(tab==='jobs'){
+      items.push(this.add.text(205,435,'New jobs arrive\nafter completed trips.',{fontSize:'14px',fontStyle:'bold',align:'center',color:'#153a4a'}).setOrigin(.5));
+      save.activeQuests.forEach((active,index)=>{
+        const quest=questById(active.id);if(!quest)return;const x=590,y=205+index*115,progress=Math.min(active.progress,quest.target),done=progress>=quest.target;
+        const card=this.add.rectangle(x,y,370,96,done?0xd9eedc:0xe8f5e9,.98).setStrokeStyle(3,done?COLORS.green:COLORS.navy);
+        const emblem=this.add.circle(x-150,y,26,done?COLORS.green:COLORS.gold).setStrokeStyle(2,COLORS.navy);
+        const icon=this.add.text(x-150,y,done?'✓':quest.icon,{fontSize:done?'26px':'10px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
+        const questTitle=this.add.text(x-111,y-28,quest.title,{fontSize:'16px',fontStyle:'bold',color:'#153a4a'});
+        const description=this.add.text(x-111,y-5,quest.description,{fontSize:'12px',fontStyle:'bold',color:'#4b6973'});
+        const reward=this.add.text(x-111,y+22,`+${quest.coins} COINS   +${quest.xp} XP${quest.sticker?'   +STICKER':''}`,{fontSize:'11px',fontStyle:'bold',color:'#ef6b4a'});
+        const amount=this.add.text(x+154,y+24,done?'CLAIM':`${progress} / ${quest.target}`,{fontSize:'15px',fontStyle:'bold',color:done?'#fff6dc':'#153a4a',backgroundColor:done?'#55a86f':undefined}).setPadding(done?9:0,done?5:0).setOrigin(1);
+        if(done){amount.setInteractive({useHandCursor:true});amount.on('pointerdown',()=>this.claimJob(active.id,x+120,y));}
+        items.push(card,emblem,icon,questTitle,description,reward,amount);
+      });
+    }else{
+      const unlocked=new Set(save.achievementIds),pending=new Set(save.pendingAchievementIds);items.push(this.add.text(790,110,`${unlocked.size} / ${ACHIEVEMENTS.length} CLAIMED`,{fontSize:'14px',fontStyle:'bold',color:'#153a4a'}).setOrigin(1,.5));
+      ACHIEVEMENTS.forEach((achievement,index)=>{
+        const x=565,y=180+index*82,known=unlocked.has(achievement.id),ready=pending.has(achievement.id),card=this.add.rectangle(x,y,430,65,known?0xe8f5e9:ready?0xffedbd:0xd7e1dd,.98).setStrokeStyle(3,known?COLORS.green:ready?COLORS.gold:0x6f858a);
+        const seal=this.add.circle(x-182,y,20,known?COLORS.gold:ready?COLORS.coral:0x71858b).setStrokeStyle(2,COLORS.navy);
+        const mark=this.add.text(x-182,y,known?'★':ready?'!':'?',{fontSize:'18px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
+        const name=this.add.text(x-145,y-14,known||ready?achievement.title:'???',{fontSize:'16px',fontStyle:'bold',color:'#153a4a'});
+        const description=this.add.text(x-145,y+11,known?achievement.description:ready?`READY  +${achievement.coins} COINS  +${achievement.xp} XP`:'Keep exploring Sunny Pier.',{fontSize:'11px',fontStyle:'bold',color:ready?'#ef6b4a':'#4b6973'});
+        items.push(card,seal,mark,name,description);
+        if(ready){const claim=this.add.text(x+188,y,'CLAIM',{fontSize:'12px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#55a86f'}).setPadding(8,5).setOrigin(1,.5).setInteractive({useHandCursor:true});claim.on('pointerdown',()=>this.claimBadge(achievement.id,x+150,y));items.push(claim);}
+      });
+    }
+    this.jobsModal=this.add.container(0,0,items).setDepth(220);
+  }
+  private closeJobs(){this.jobsModal?.destroy(true);this.jobsModal=undefined;this.finishModalClose()}
+  private boatFrame(save=SaveService.load()){
+    return ['boat-broken','boat-hull','boat-motor','boat-ready'][SaveService.boatStage(save)];
+  }
+  private boatOriginY(save=SaveService.load()){return SaveService.boatStage(save)>=2?.26:.5}
+  private applyBoatFrame(save=SaveService.load()){this.boatSprite.setFrame(this.boatFrame(save)).setOrigin(.5,this.boatOriginY(save))}
+  private openBoatRepair(){
+    this.modalOpen=true;this.pointerSteering=false;this.help.setVisible(false);this.boatModal?.destroy(true);
+    const save=SaveService.load(),stage=SaveService.boatStage(save),nextCost=SaveService.nextBoatRepairCost(save),level=SaveService.levelProgress(save.xp).level,items:Phaser.GameObjects.GameObject[]=[];
+    const shade=this.add.rectangle(480,270,960,540,0x102f3d,.78).setInteractive(),paper=this.add.rectangle(480,280,850,470,0xfff6dc,.99).setStrokeStyle(8,COLORS.navy);
+    const title=this.add.text(95,62,'THE QUESTIONABLY SEAWORTHY BOAT',{fontSize:'27px',fontStyle:'bold',color:'#153a4a'}),subtitle=this.add.text(95,97,stage===3?'IT FLOATS. THE HARBOR MASTER IS STUNNED.':'TECHNICAL STATUS: FLOATS. MOSTLY.',{fontSize:'13px',fontStyle:'bold',color:'#4b6973'});
+    const close=this.add.text(866,65,'X',{fontSize:'24px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(12,7).setOrigin(.5).setInteractive({useHandCursor:true});close.on('pointerdown',()=>this.closeBoatRepair());
+    const art=this.add.image(270,285,'hub-boat-states',this.boatFrame(save)).setDisplaySize(330,330),stageNames=['HULL PATCHED','MOTOR PERSUADED','MÖWE EVICTED'];
+    items.push(shade,paper,title,subtitle,close,art);
+    stageNames.forEach((name,index)=>{const done=index<stage,y=180+index*78,card=this.add.rectangle(630,y,330,58,done?0xd9eedc:0xe8f5e9,.98).setStrokeStyle(3,done?COLORS.green:COLORS.navy),mark=this.add.text(490,y,done?'✓':String(index+1),{fontSize:'18px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5),label=this.add.text(525,y-10,name,{fontSize:'15px',fontStyle:'bold',color:'#153a4a'}),cost=this.add.text(525,y+12,done?'COMPLETE':`${BOAT_REPAIR_COSTS[index]} COINS`,{fontSize:'12px',fontStyle:'bold',color:done?'#55a86f':'#ef6b4a'});items.push(card,mark,label,cost);});
+    const routeReady=stage===3&&level>=3,status=stage<3?`REPAIR ${stage+1} OF 3` : routeReady?'ROCKY COVE ROUTE READY':'BOAT READY • REACH LEVEL 3',statusText=this.add.text(630,425,status,{fontSize:'15px',fontStyle:'bold',color:routeReady?'#55a86f':'#153a4a'}).setOrigin(.5);
+    items.push(statusText,this.add.text(270,455,`INVESTED  ${save.boat.investedCoins} / 1000 COINS`,{fontSize:'14px',fontStyle:'bold',color:'#4b6973'}).setOrigin(.5));
+    if(nextCost!==undefined){const canAfford=save.coins>=nextCost,repair=this.add.text(630,475,canAfford?`REPAIR  ${nextCost}`:`NEED ${nextCost-save.coins} MORE COINS`,{fontSize:'15px',fontStyle:'bold',color:'#fff6dc',backgroundColor:canAfford?'#ef6b4a':'#71858b'}).setPadding(14,8).setOrigin(.5);if(canAfford){repair.setInteractive({useHandCursor:true});repair.on('pointerdown',()=>this.repairCurrentBoat());}items.push(repair);}
+    else items.push(this.add.text(630,475,routeReady?'TRAVEL MAP COMING NEXT':'THE BOAT IS READY. YOU ARE NOT.',{fontSize:'14px',fontStyle:'bold',color:'#fff6dc',backgroundColor:routeReady?'#55a86f':'#71858b'}).setPadding(14,8).setOrigin(.5));
+    this.boatModal=this.add.container(0,0,items).setDepth(220);
+  }
+  private repairCurrentBoat(){
+    const save=SaveService.load(),before=SaveService.boatStage(save);if(!SaveService.repairBoat(save))return;SaveService.save(save);this.applyBoatFrame(save);this.refreshProgressHud();this.openBoatRepair();this.showToast(before===2?'Boat repaired! The gull has filed an appeal.':'Repair complete!');
+  }
+  private closeBoatRepair(){this.boatModal?.destroy(true);this.boatModal=undefined;this.finishModalClose()}
+  private claimJob(id:string,x:number,y:number){
+    const save=SaveService.load(),levelBefore=SaveService.levelProgress(save.xp).level,reward=QuestService.claimQuest(save,id);if(!reward)return;
+    SaveService.save(save);this.jobsModal?.destroy(true);this.jobsModal=undefined;this.finishModalClose();this.animateClaimReward(reward.title,reward.coins,reward.xp,x,y,levelBefore,reward.sticker?'  + STICKER':'');
+  }
+  private claimBadge(id:string,x:number,y:number){
+    const save=SaveService.load(),levelBefore=SaveService.levelProgress(save.xp).level,reward=QuestService.claimAchievement(save,id);if(!reward)return;
+    SaveService.save(save);this.jobsModal?.destroy(true);this.jobsModal=undefined;this.finishModalClose();this.animateClaimReward(reward.title,reward.coins,reward.xp,x,y,levelBefore,'  BADGE CLAIMED');
+  }
+  private refreshProgressHud(){
+    const save=SaveService.load(),level=SaveService.levelProgress(save.xp),xpLabel=level.maxed?`${save.xp} XP`:`${level.current}/${level.needed} XP`;
+    this.progressText.setText(`LEVEL ${level.level}   ${xpLabel}   COINS ${save.coins}`);
+  }
+  private animateClaimReward(label:string,coins:number,xp:number,x:number,y:number,levelBefore:number,extra:string){
+    for(let i=0;i<8;i++){const coin=i%2===0,particle=this.add.text(x+(i%3)*8,y+(i%2)*7,coin?'●':'✦',{fontSize:coin?'17px':'15px',fontStyle:'bold',color:coin?'#ffd166':'#69d6c5',stroke:'#153a4a',strokeThickness:3}).setOrigin(.5).setDepth(260);this.tweens.add({targets:particle,x:900+(i%3)*12,y:28,alpha:{from:1,to:.75},duration:430+i*45,delay:i*35,ease:'Cubic.easeIn',onComplete:()=>particle.destroy()});}
+    const message=this.add.text(480,105,`${label.toUpperCase()}  +${coins} COINS  +${xp} XP${extra}`,{fontSize:'17px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#ffd166'}).setPadding(13,8).setOrigin(.5).setDepth(255).setScale(.65);
+    this.tweens.add({targets:message,scale:1,duration:220,ease:'Back.easeOut'});
+    this.time.delayedCall(850,()=>{this.refreshProgressHud();this.tweens.add({targets:this.progressText,scale:1.14,duration:130,yoyo:true});const level=SaveService.levelProgress(SaveService.load().xp).level;if(level>levelBefore){message.setText(`LEVEL UP!  LEVEL ${level}`).setBackgroundColor('#ef6b4a').setColor('#fff6dc');this.tweens.add({targets:message,scale:1.18,duration:150,yoyo:true});this.time.delayedCall(1000,()=>message.destroy());}else this.tweens.add({targets:message,alpha:0,y:85,duration:350,onComplete:()=>message.destroy()});});
+  }
   private showToast(message:string){const tx=this.add.text(480,105,message,{fontSize:'18px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#fff6dc'}).setPadding(12,7).setOrigin(.5).setDepth(90);this.tweens.add({targets:tx,y:85,alpha:0,delay:850,duration:350,onComplete:()=>tx.destroy()})}
   private clearOverlay(){this.overlay?.destroy(true);this.overlay=undefined}
   private hideCastMeter(){(this.children.getByName('cast-meter') as Phaser.GameObjects.Image|undefined)?.setVisible(false);this.meter.clear()}
   update(_:number,delta:number){
-    if(!this.reducedMotion&&this.surface.visible)for(const cloud of this.surfaceClouds){
-      cloud.sprite.x+=cloud.speed*delta/1000;
-      if(cloud.sprite.x-cloud.sprite.displayWidth/2>960)cloud.sprite.x=-cloud.sprite.displayWidth/2;
+    if(!this.reducedMotion&&this.surface.visible){
+      this.boatSprite.y=315+Math.round(Math.sin(this.time.now*.0016)*2);
+      for(const cloud of this.surfaceClouds){
+        cloud.sprite.x+=cloud.speed*delta/1000;
+        if(cloud.sprite.x-cloud.sprite.displayWidth/2>960)cloud.sprite.x=-cloud.sprite.displayWidth/2;
+      }
     }
     if(this.phase==='CAST'){this.hideCastMeter()}
     else if(this.phase==='UNDERWATER')this.updateUnderwater(delta);else if(this.phase==='RETRACTING')this.updateRetract(delta);

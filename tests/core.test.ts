@@ -1,7 +1,8 @@
 import { describe,it,expect } from 'vitest';
-import { fishFlipXForDirection, pickFish } from '../src/gameplay/Fish';
+import { FISH, fishFlipXForDirection, pickFish } from '../src/gameplay/Fish';
 import { TripState } from '../src/gameplay/TripState';
-import { LEVEL_THRESHOLDS, SaveService } from '../src/core/SaveService';
+import { BOAT_REPAIR_COSTS, EQUIPMENT_COSTS, LEVEL_THRESHOLDS, SaveService } from '../src/core/SaveService';
+import { QuestService } from '../src/gameplay/QuestService';
 
 describe('core logic',()=>{
   it('picks an allowed fish',()=>expect(pickFish(0,()=>.9).rarity).toBe('Common'));
@@ -15,8 +16,13 @@ describe('core logic',()=>{
 
   it('migrates v1 progress without losing coins or xp',()=>{
     const save=SaveService.load({getItem:()=>JSON.stringify({version:1,coins:321,xp:88,tutorialComplete:true,muted:true})});
-    expect(save).toMatchObject({version:2,coins:321,xp:88,tutorialComplete:true,muted:true});
+    expect(save).toMatchObject({version:3,coins:321,xp:88,tutorialComplete:true,muted:true});
     expect(save.fishStats).toEqual({});expect(save.discoveredTreasures).toEqual([]);
+  });
+
+  it('migrates v2 saves with empty pending badge claims',()=>{
+    const save=SaveService.load({getItem:()=>JSON.stringify({version:2,coins:77,xp:44,achievementIds:['first-catch']})});
+    expect(save).toMatchObject({version:3,coins:77,xp:44,achievementIds:['first-catch'],pendingAchievementIds:[]});
   });
 
   it('records catches without replacing a better record',()=>{
@@ -40,5 +46,40 @@ describe('core logic',()=>{
     SaveService.recordCatch(save,'minnow',.2);SaveService.discoverTreasure(save,'bottle');expect(save.coolerStickerTier).toBe(1);
     ['sardine','perch','bluegill'].forEach(id=>SaveService.recordCatch(save,id,.5));expect(save.coolerStickerTier).toBe(2);
     ['carp','trout'].forEach(id=>SaveService.recordCatch(save,id,1));SaveService.discoverTreasure(save,'pearl');expect(save.coolerStickerTier).toBe(3);
+  });
+
+  it('only purchases equipment with enough coins and caps every path at three tiers',()=>{
+    const save=SaveService.load({getItem:()=>null});save.coins=EQUIPMENT_COSTS.reduce((sum,cost)=>sum+cost,0);
+    expect(SaveService.purchaseEquipment(save,'line')).toBe(true);expect(save.equipment.line).toBe(1);
+    expect(save.coins).toBe(650);expect(SaveService.purchaseEquipment(save,'line')).toBe(true);expect(SaveService.purchaseEquipment(save,'line')).toBe(true);
+    expect(SaveService.nextEquipmentCost(save,'line')).toBeUndefined();expect(SaveService.purchaseEquipment(save,'line')).toBe(false);
+    expect(SaveService.purchaseEquipment(save,'reel')).toBe(false);expect(save.coins).toBe(0);
+  });
+
+  it('persists purchased equipment levels',()=>{
+    let raw:string|null=null;const storage={getItem:()=>raw,setItem:(_:string,value:string)=>{raw=value}};
+    const save=SaveService.load(storage);save.coins=150;expect(SaveService.purchaseEquipment(save,'bait')).toBe(true);SaveService.save(save,storage);
+    expect(SaveService.load(storage).equipment.bait).toBe(1);
+  });
+
+  it('repairs the boat in three paid stages and unlocks it only at the end',()=>{
+    const save=SaveService.load({getItem:()=>null});save.coins=BOAT_REPAIR_COSTS.reduce((sum,cost)=>sum+cost,0);
+    BOAT_REPAIR_COSTS.forEach((cost,index)=>{expect(SaveService.nextBoatRepairCost(save)).toBe(cost);expect(SaveService.repairBoat(save)).toBe(true);expect(SaveService.boatStage(save)).toBe(index+1);});
+    expect(save.boat).toEqual({investedCoins:1000,unlocked:true});expect(save.coins).toBe(0);expect(SaveService.repairBoat(save)).toBe(false);
+  });
+
+  it('holds completed harbor jobs until they are manually claimed',()=>{
+    const save=SaveService.load({getItem:()=>null}),trip=new TripState();QuestService.ensureActive(save);
+    trip.add({fish:FISH[0],weight:.2,coins:2,xp:5,isNew:true,isRecord:false});trip.add({fish:FISH[1],weight:.4,coins:5,xp:6,isNew:false,isRecord:false});
+    const completed=QuestService.applyTrip(save,trip),coinsBefore=save.coins;
+    expect(completed.map(job=>job.title)).toContain('Full Net');expect(completed.map(job=>job.title)).toContain('New Neighbor');
+    expect(save.coins).toBe(coinsBefore);expect(save.activeQuests[0].progress).toBe(2);
+    const reward=QuestService.claimQuest(save,'two-fish');expect(reward?.coins).toBe(40);expect(save.coins).toBe(coinsBefore+40);expect(save.activeQuests[0].id).not.toBe('two-fish');
+  });
+
+  it('holds new badges until they are manually claimed',()=>{
+    const save=SaveService.load({getItem:()=>null});SaveService.recordCatch(save,'minnow',.3);
+    const ready=QuestService.discoverAchievements(save);expect(ready.map(badge=>badge.id)).toContain('first-catch');expect(save.achievementIds).not.toContain('first-catch');
+    const reward=QuestService.claimAchievement(save,'first-catch');expect(reward?.coins).toBe(30);expect(save.achievementIds).toContain('first-catch');expect(save.pendingAchievementIds).not.toContain('first-catch');
   });
 });
