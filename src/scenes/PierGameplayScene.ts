@@ -27,6 +27,7 @@ export class PierGameplayScene extends Phaser.Scene {
   private reducedMotion=false;
   private surfaceClouds:{sprite:Phaser.GameObjects.Image;speed:number}[]=[];
   private cooler!:Phaser.GameObjects.Image;private tacklebox!:Phaser.GameObjects.Image;private boatSprite!:Phaser.GameObjects.Image;private boatZone!:Phaser.GameObjects.Zone;private noticeBoard!:Phaser.GameObjects.Zone;private collectionModal?:Phaser.GameObjects.Container;private tackleModal?:Phaser.GameObjects.Container;private jobsModal?:Phaser.GameObjects.Container;private boatModal?:Phaser.GameObjects.Container;private modalOpen=false;
+  private touchingTarget?:Target;
   private currentTreasureId?:TreasureId;
 
   constructor(){super('Pier')}
@@ -39,11 +40,12 @@ export class PierGameplayScene extends Phaser.Scene {
     this.meter=this.add.graphics().setDepth(90);
     this.keys=this.input.keyboard?.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E,SPACE') as Record<string,Phaser.Input.Keyboard.Key>;
     this.input.on('pointerdown',(p:Phaser.Input.Pointer)=>{
+      AudioService.unlock();
       if(this.modalOpen)return;
-      if(this.phase==='CAST'&&this.cooler?.getBounds().contains(p.worldX,p.worldY)){this.openCollection('fish');return}
-      if(this.phase==='CAST'&&this.tacklebox?.getBounds().contains(p.worldX,p.worldY)){this.openTackleBox();return}
-      if(this.phase==='CAST'&&this.noticeBoard?.getBounds().contains(p.worldX,p.worldY)){this.openJobs('jobs');return}
-      if(this.phase==='CAST'&&this.boatZone?.getBounds().contains(p.worldX,p.worldY)){this.openBoatRepair();return}
+      if(this.phase==='CAST'&&this.cooler?.getBounds().contains(p.worldX,p.worldY)){AudioService.bookOpen();this.openCollection('fish');return}
+      if(this.phase==='CAST'&&this.tacklebox?.getBounds().contains(p.worldX,p.worldY)){AudioService.tackleOpen();this.openTackleBox();return}
+      if(this.phase==='CAST'&&this.noticeBoard?.getBounds().contains(p.worldX,p.worldY)){AudioService.jobsOpen();this.openJobs('jobs');return}
+      if(this.phase==='CAST'&&this.boatZone?.getBounds().contains(p.worldX,p.worldY)){AudioService.boatOpen();this.openBoatRepair();return}
       this.pointerSteering=true;this.hookTarget.set(p.worldX,p.worldY);this.press();
     });
     this.input.on('pointermove',(p:Phaser.Input.Pointer)=>{if(this.pointerSteering)this.hookTarget.set(p.worldX,p.worldY)});
@@ -66,22 +68,22 @@ export class PierGameplayScene extends Phaser.Scene {
       .beginPath().moveTo(914,183).lineTo(925,183).lineTo(931,193).lineTo(928,203).lineTo(926,258).lineTo(903,258).lineTo(906,203).lineTo(903,193).closePath().fillPath();
     const foregroundOccluder=this.add.image(480,270,'bg-pier-remaster').setDisplaySize(960,540).setMask(foregroundMaskSource.createGeometryMask());
     const rearPostRipples=this.makePostRipples(false);
-    const noticeBoardArt=this.add.image(165,320,'hub-notice-board').setDisplaySize(90,116).setDepth(3);
-    this.noticeBoard=this.add.zone(165,320,118,140).setInteractive({useHandCursor:true}).setDepth(6);
-    this.cooler=this.add.image(175,420,'hub-cooler').setDisplaySize(82,59).setInteractive({useHandCursor:true}).setDepth(4);
-    this.tacklebox=this.add.image(210,448,'hub-tacklebox-closed').setDisplaySize(82,59).setInteractive({useHandCursor:true}).setDepth(4);
+    const jobsNoticeArt=this.add.image(73,270,'hub-jobs-notice').setDisplaySize(130,160).setDepth(3);
+    this.noticeBoard=this.add.zone(73,270,92,125).setInteractive({useHandCursor:true}).setDepth(6);
+    this.cooler=this.add.image(160,420,'hub-cooler').setDisplaySize(82,59).setInteractive({useHandCursor:true}).setDepth(4);
+    this.tacklebox=this.add.image(225,448,'hub-tacklebox-closed').setDisplaySize(82,59).setInteractive({useHandCursor:true}).setDepth(4);
     const save=SaveService.load(),stickers:Phaser.GameObjects.Arc[]=[];
     this.boatSprite=this.add.image(620,315,'hub-boat-states',this.boatFrame(save)).setDisplaySize(180,180).setOrigin(.5,this.boatOriginY(save)).setDepth(4);
     this.boatZone=this.add.zone(620,335,175,82).setInteractive({useHandCursor:true}).setDepth(6);
     const stickerColors=[0xffd166,0xef6b4a,0x69d6c5];
-    for(let i=0;i<Math.min(3,save.coolerStickerTier+save.harborStickerCount);i++)stickers.push(this.add.circle(156+i*11,426,4,stickerColors[i]).setStrokeStyle(1,0xfff6dc).setDepth(5));
+    for(let i=0;i<Math.min(3,save.coolerStickerTier+save.harborStickerCount);i++)stickers.push(this.add.circle(141+i*11,426,4,stickerColors[i]).setStrokeStyle(1,0xfff6dc).setDepth(5));
     this.angler=this.add.image(330,350,'angler-chair-perspective').setDisplaySize(315,210).setDepth(5);
     const frontPostRipples=this.makePostRipples(true);
     this.bobber=this.add.circle(585,315,8,0xef6b4a).setStrokeStyle(3,0xfff6dc).setVisible(false).setDepth(8);
     const zone=this.add.text(22,22,'SUNNY PIER',{fontSize:'18px',fontStyle:'bold',color:'#fff6dc'}).setDepth(11);
     const level=SaveService.levelProgress(save.xp),xpLabel=level.maxed?`${save.xp} XP`:`${level.current}/${level.needed} XP`;
     this.progressText=this.add.text(938,22,`LEVEL ${level.level}   ${xpLabel}   COINS ${save.coins}`,{fontSize:'15px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(1,0).setDepth(11);
-    this.surface.add([bg,cloudA,cloudB,cloudC,foregroundOccluder,shade,...rearPostRipples,noticeBoardArt,this.noticeBoard,this.cooler,this.tacklebox,this.boatSprite,this.boatZone,...stickers,this.angler,...frontPostRipples,this.bobber,zone,this.progressText]);
+    this.surface.add([bg,cloudA,cloudB,cloudC,foregroundOccluder,shade,...rearPostRipples,jobsNoticeArt,this.noticeBoard,this.cooler,this.tacklebox,this.boatSprite,this.boatZone,...stickers,this.angler,...frontPostRipples,this.bobber,zone,this.progressText]);
     if(!this.reducedMotion){
       this.scheduleSurfaceGull(true);
     }
@@ -117,7 +119,7 @@ export class PierGameplayScene extends Phaser.Scene {
     }});
   }
   private startUnderwater(){
-    this.phase='UNDERWATER';this.surface.setVisible(false);this.help.setVisible(false);this.title.setText('');this.hookPos.set(480,92);this.hookTarget.copy(this.hookPos);this.usedSlots=0;this.caught=[];this.treasureFound=false;this.currentTreasureId=undefined;this.targets=[];
+    this.phase='UNDERWATER';this.surface.setVisible(false);this.help.setVisible(false);this.title.setText('');this.hookPos.set(480,92);this.hookTarget.copy(this.hookPos);this.usedSlots=0;this.caught=[];this.treasureFound=false;this.currentTreasureId=undefined;this.targets=[];this.touchingTarget=undefined;
     const equipment=SaveService.load().equipment;
     this.maxLinePx=590+equipment.line*45;this.lineMeters=22+equipment.line*2;
     this.hookMoveSpeed=165*(1+equipment.reel*.07);this.reelSpeed=340*(1+equipment.reel*.08);
@@ -170,6 +172,7 @@ export class PierGameplayScene extends Phaser.Scene {
   private updateFish(d:number){
     let touching:Target|undefined;
     for(const t of this.targets){if(!t.sprite.visible)continue;t.sprite.x+=t.direction*t.speed*d;if(t.sprite.x<90||t.sprite.x>870){t.direction*=-1;t.sprite.setFlipX(fishFlipXForDirection(t.direction))}t.sprite.y=t.baseY+Math.sin(this.time.now*.002+t.phase)*15;t.aura.setPosition(t.sprite.x,t.sprite.y);t.badge.setPosition(t.sprite.x,t.sprite.y-37);if(Phaser.Math.Distance.Between(t.sprite.x,t.sprite.y,this.hookPos.x,this.hookPos.y)<42)touching=t}
+    if(touching&&touching!==this.touchingTarget)AudioService.bite();this.touchingTarget=touching;
     this.captureArt.clear();
     for(const t of this.targets){if(t===touching&&this.usedSlots+t.slots<=this.maxSlots){t.capture+=d;const needed=t.slots===2?1.25:.78;this.captureArt.lineStyle(6,0xffd166,1).beginPath().arc(t.sprite.x,t.sprite.y,36,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(t.capture/needed,1)).strokePath();if(t.capture>=needed)this.catchTarget(t)}else t.capture=Math.max(0,t.capture-d*.65)}
   }
@@ -192,7 +195,7 @@ export class PierGameplayScene extends Phaser.Scene {
   }
   private pointBehind(distance:number){const pts=[...this.trail,this.hookPos];let left=distance;for(let i=pts.length-1;i>0;i--){const len=pts[i].distance(pts[i-1]);if(left<=len)return pts[i].clone().lerp(pts[i-1],left/len);left-=len}return pts[0].clone()}
   private refreshHud(){if(!this.lineText)return;const meters=this.routeLength()/this.maxLinePx*this.lineMeters;this.lineText.setText(`LINE  ${(this.lineMeters-meters).toFixed(1)} m LEFT`);this.basketText.setText(`BASKET  ${this.usedSlots} / ${this.maxSlots}${this.treasureFound?'   ★':''}`)}
-  private startRetract(){if(this.phase!=='UNDERWATER')return;this.phase='RETRACTING';this.pointerSteering=false;this.diveHint?.setVisible(false);if(this.trail[this.trail.length-1].distance(this.hookPos)>1)this.trail.push(this.hookPos.clone());this.retractIndex=this.trail.length-2;this.showToast('Following the line home…')}
+  private startRetract(){if(this.phase!=='UNDERWATER')return;AudioService.reel();this.phase='RETRACTING';this.pointerSteering=false;this.diveHint?.setVisible(false);if(this.trail[this.trail.length-1].distance(this.hookPos)>1)this.trail.push(this.hookPos.clone());this.retractIndex=this.trail.length-2;this.showToast('Following the line home…')}
   private updateRetract(delta:number){
     const step=this.reelSpeed*delta/1000;if(this.retractIndex<0){this.hookPos.copy(this.anchor);this.finishDive();return}const target=this.trail[this.retractIndex],v=target.clone().subtract(this.hookPos);if(v.length()<=step){this.hookPos.copy(target);this.trail.length=this.retractIndex+1;this.retractIndex--}else this.hookPos.add(v.setLength(step));this.drawHookAndRope();this.refreshHud();
   }
@@ -209,6 +212,7 @@ export class PierGameplayScene extends Phaser.Scene {
     const names=records.map((r,i)=>this.add.text(420+i*120,280,`${r.fish.name}\n${r.weight.toFixed(2)} kg${r.isNew?'  NEW!':r.isRecord?'  RECORD!':''}`,{fontSize:'14px',fontStyle:'bold',align:'center',color:r.isNew?'#ef6b4a':'#153a4a'}).setOrigin(.5));
     const newSecret=this.trip.treasures.at(-1)?.isNew?'   NEW SECRET!':this.treasureFound?'   SECRET':'';
     const reward=this.add.text(480,350,`${this.caught.length} fish   +${totalCoins+(this.treasureFound?25:0)} coins   +${totalXp} XP${newSecret}`,{fontSize:'17px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5),next=this.add.text(480,420,'TAP TO CONTINUE',{fontSize:'18px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(18,10).setOrigin(.5);
+    if(this.caught.length||this.treasureFound)AudioService.coins();else AudioService.fail();
     this.overlay=this.add.container(0,0,[shade,card,heading,...icons,...names,reward,next]).setDepth(150);this.title.setText('');this.inputLockedUntil=this.time.now+300;
   }
   private nextDive(){if(this.trip.complete){PortalBridge.gameplayStop();this.scene.start('Summary',{trip:this.trip})}else this.beginCast()}
@@ -246,7 +250,7 @@ export class PierGameplayScene extends Phaser.Scene {
     const fishTab=this.add.rectangle(315,115,210,45,tab==='fish'?COLORS.coral:0xa9e5dc).setStrokeStyle(3,COLORS.navy).setInteractive({useHandCursor:true}),fishText=this.add.text(315,115,'FISH',{fontSize:'18px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
     const treasureTab=this.add.rectangle(545,115,210,45,tab==='treasures'?COLORS.coral:0xa9e5dc).setStrokeStyle(3,COLORS.navy).setInteractive({useHandCursor:true}),treasureText=this.add.text(545,115,'TREASURES',{fontSize:'18px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
     const close=this.add.text(866,65,'X',{fontSize:'24px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(12,7).setOrigin(.5).setInteractive({useHandCursor:true});
-    fishTab.on('pointerdown',()=>this.openCollection('fish'));treasureTab.on('pointerdown',()=>this.openCollection('treasures'));close.on('pointerdown',()=>this.closeCollection());
+    fishTab.on('pointerdown',()=>{AudioService.uiSelect();this.openCollection('fish')});treasureTab.on('pointerdown',()=>{AudioService.uiSelect();this.openCollection('treasures')});close.on('pointerdown',()=>this.closeCollection());
     items.push(shade,paper,title,fishTab,fishText,treasureTab,treasureText,close);
     if(this.trip.catches.length||this.trip.treasures.length)items.push(this.add.text(865,105,'CURRENT TRIP INCLUDED',{fontSize:'10px',fontStyle:'bold',color:'#ef6b4a'}).setOrigin(1,.5));
     if(tab==='fish'){
@@ -274,7 +278,7 @@ export class PierGameplayScene extends Phaser.Scene {
     this.modalOpen=false;
     if(this.phase==='CAST')this.help.setVisible(false);
   }
-  private closeCollection(){this.collectionModal?.destroy(true);this.collectionModal=undefined;this.finishModalClose()}
+  private closeCollection(){AudioService.bookClose();this.collectionModal?.destroy(true);this.collectionModal=undefined;this.finishModalClose()}
   private openTackleBox(){
     this.modalOpen=true;this.pointerSteering=false;this.help.setVisible(false);this.tackleModal?.destroy(true);
     const saved=SaveService.load(),items:Phaser.GameObjects.GameObject[]=[];
@@ -303,7 +307,7 @@ export class PierGameplayScene extends Phaser.Scene {
       const level=saved.equipment[id],cost=SaveService.nextEquipmentCost(saved,id),buttonText=cost===undefined?'MAXED':`BUY  ${cost}`;
       const tier=this.add.text(x,y+61,`TIER ${level} / 3`,{fontSize:'11px',fontStyle:'bold',color:'#ef6b4a'}).setOrigin(.5);
       const button=this.add.text(x,y+84,buttonText,{fontSize:'12px',fontStyle:'bold',color:'#fff6dc',backgroundColor:cost===undefined?'#71858b':saved.coins>=cost?'#ef6b4a':'#9aa8a3'}).setPadding(8,5).setOrigin(.5);
-      if(cost!==undefined){button.setInteractive({useHandCursor:true});button.on('pointerdown',()=>this.confirmEquipmentPurchase(id,name,cost));}
+      if(cost!==undefined){button.setInteractive({useHandCursor:true});button.on('pointerdown',()=>{AudioService.uiPop();this.confirmEquipmentPurchase(id,name,cost)});}
       items.push(card,icon,label,detail,tier,button);
     });
     const note=this.add.text(670,490,'Prices: 150  •  250  •  400 coins',{fontSize:'12px',fontStyle:'bold',color:'#4b6973'}).setOrigin(.5);
@@ -317,10 +321,10 @@ export class PierGameplayScene extends Phaser.Scene {
     const copy=this.add.text(480,258,`Spend ${cost} coins?\nYou have ${save.coins}.`,{fontSize:'15px',fontStyle:'bold',align:'center',color:'#4b6973'}).setOrigin(.5);
     const cancel=this.add.text(400,322,'CANCEL',{fontSize:'14px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#a9e5dc'}).setPadding(11,7).setOrigin(.5).setInteractive({useHandCursor:true});
     const confirm=this.add.text(560,322,`BUY  ${cost}`,{fontSize:'14px',fontStyle:'bold',color:'#fff6dc',backgroundColor:save.coins>=cost?'#ef6b4a':'#9aa8a3'}).setPadding(11,7).setOrigin(.5).setInteractive({useHandCursor:true});
-    const prompt=this.add.container(0,0,[shade,card,heading,copy,cancel,confirm]).setDepth(230);cancel.on('pointerdown',()=>prompt.destroy(true));
-    confirm.on('pointerdown',()=>{if(!SaveService.purchaseEquipment(save,id)){this.showToast('Not enough coins.');prompt.destroy(true);return}SaveService.save(save);prompt.destroy(true);this.openTackleBox();this.showToast(`${name} upgraded!`)});
+    const prompt=this.add.container(0,0,[shade,card,heading,copy,cancel,confirm]).setDepth(230);cancel.on('pointerdown',()=>{AudioService.uiCancel();prompt.destroy(true)});
+    confirm.on('pointerdown',()=>{if(!SaveService.purchaseEquipment(save,id)){AudioService.fail();this.showToast('Not enough coins.');prompt.destroy(true);return}AudioService.purchase();SaveService.save(save);prompt.destroy(true);this.openTackleBox();this.showToast(`${name} upgraded!`)});
   }
-  private closeTackleBox(){this.tackleModal?.destroy(true);this.tackleModal=undefined;this.finishModalClose()}
+  private closeTackleBox(){AudioService.uiCancel();this.tackleModal?.destroy(true);this.tackleModal=undefined;this.finishModalClose()}
   private openJobs(tab:'jobs'|'badges'){
     this.modalOpen=true;this.pointerSteering=false;this.help.setVisible(false);this.jobsModal?.destroy(true);
     const save=SaveService.load();QuestService.ensureActive(save);SaveService.save(save);const items:Phaser.GameObjects.GameObject[]=[];
@@ -334,7 +338,7 @@ export class PierGameplayScene extends Phaser.Scene {
     const jobsText=this.add.text(330,128,'JOBS',{fontSize:'17px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
     const badgesTab=this.add.rectangle(550,128,205,42,tab==='badges'?COLORS.coral:0xa9e5dc).setStrokeStyle(3,COLORS.navy).setInteractive({useHandCursor:true});
     const badgesText=this.add.text(550,128,'BADGES',{fontSize:'17px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
-    jobsTab.on('pointerdown',()=>this.openJobs('jobs'));badgesTab.on('pointerdown',()=>this.openJobs('badges'));
+    jobsTab.on('pointerdown',()=>{AudioService.jobsOpen();this.openJobs('jobs')});badgesTab.on('pointerdown',()=>{AudioService.jobsOpen();this.openJobs('badges')});
     const notes=this.add.image(205,296,'harbor-notes').setDisplaySize(220,238);
     items.push(shade,paper,title,subtitle,close,jobsTab,jobsText,badgesTab,badgesText,notes);
     if(tab==='jobs'){
@@ -365,7 +369,7 @@ export class PierGameplayScene extends Phaser.Scene {
     }
     this.jobsModal=this.add.container(0,0,items).setDepth(220);
   }
-  private closeJobs(){this.jobsModal?.destroy(true);this.jobsModal=undefined;this.finishModalClose()}
+  private closeJobs(){AudioService.bookClose();this.jobsModal?.destroy(true);this.jobsModal=undefined;this.finishModalClose()}
   private boatFrame(save=SaveService.load()){
     return ['boat-broken','boat-hull','boat-motor','boat-ready'][SaveService.boatStage(save)];
   }
@@ -387,16 +391,16 @@ export class PierGameplayScene extends Phaser.Scene {
     this.boatModal=this.add.container(0,0,items).setDepth(220);
   }
   private repairCurrentBoat(){
-    const save=SaveService.load(),before=SaveService.boatStage(save);if(!SaveService.repairBoat(save))return;SaveService.save(save);this.applyBoatFrame(save);this.refreshProgressHud();this.openBoatRepair();this.showToast(before===2?'Boat repaired! The gull has filed an appeal.':'Repair complete!');
+    const save=SaveService.load(),before=SaveService.boatStage(save);if(!SaveService.repairBoat(save)){AudioService.fail();return}AudioService.repair();SaveService.save(save);this.applyBoatFrame(save);this.refreshProgressHud();this.openBoatRepair();this.showToast(before===2?'Boat repaired! The gull has filed an appeal.':'Repair complete!');
   }
-  private closeBoatRepair(){this.boatModal?.destroy(true);this.boatModal=undefined;this.finishModalClose()}
+  private closeBoatRepair(){AudioService.uiCancel();this.boatModal?.destroy(true);this.boatModal=undefined;this.finishModalClose()}
   private claimJob(id:string,x:number,y:number){
     const save=SaveService.load(),levelBefore=SaveService.levelProgress(save.xp).level,reward=QuestService.claimQuest(save,id);if(!reward)return;
-    SaveService.save(save);this.jobsModal?.destroy(true);this.jobsModal=undefined;this.finishModalClose();this.animateClaimReward(reward.title,reward.coins,reward.xp,x,y,levelBefore,reward.sticker?'  + STICKER':'');
+    AudioService.claim();SaveService.save(save);this.jobsModal?.destroy(true);this.jobsModal=undefined;this.finishModalClose();this.animateClaimReward(reward.title,reward.coins,reward.xp,x,y,levelBefore,reward.sticker?'  + STICKER':'');
   }
   private claimBadge(id:string,x:number,y:number){
     const save=SaveService.load(),levelBefore=SaveService.levelProgress(save.xp).level,reward=QuestService.claimAchievement(save,id);if(!reward)return;
-    SaveService.save(save);this.jobsModal?.destroy(true);this.jobsModal=undefined;this.finishModalClose();this.animateClaimReward(reward.title,reward.coins,reward.xp,x,y,levelBefore,'  BADGE CLAIMED');
+    AudioService.claim();SaveService.save(save);this.jobsModal?.destroy(true);this.jobsModal=undefined;this.finishModalClose();this.animateClaimReward(reward.title,reward.coins,reward.xp,x,y,levelBefore,'  BADGE CLAIMED');
   }
   private refreshProgressHud(){
     const save=SaveService.load(),level=SaveService.levelProgress(save.xp),xpLabel=level.maxed?`${save.xp} XP`:`${level.current}/${level.needed} XP`;
@@ -406,7 +410,7 @@ export class PierGameplayScene extends Phaser.Scene {
     for(let i=0;i<8;i++){const coin=i%2===0,particle=this.add.text(x+(i%3)*8,y+(i%2)*7,coin?'●':'✦',{fontSize:coin?'17px':'15px',fontStyle:'bold',color:coin?'#ffd166':'#69d6c5',stroke:'#153a4a',strokeThickness:3}).setOrigin(.5).setDepth(260);this.tweens.add({targets:particle,x:900+(i%3)*12,y:28,alpha:{from:1,to:.75},duration:430+i*45,delay:i*35,ease:'Cubic.easeIn',onComplete:()=>particle.destroy()});}
     const message=this.add.text(480,105,`${label.toUpperCase()}  +${coins} COINS  +${xp} XP${extra}`,{fontSize:'17px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#ffd166'}).setPadding(13,8).setOrigin(.5).setDepth(255).setScale(.65);
     this.tweens.add({targets:message,scale:1,duration:220,ease:'Back.easeOut'});
-    this.time.delayedCall(850,()=>{this.refreshProgressHud();this.tweens.add({targets:this.progressText,scale:1.14,duration:130,yoyo:true});const level=SaveService.levelProgress(SaveService.load().xp).level;if(level>levelBefore){message.setText(`LEVEL UP!  LEVEL ${level}`).setBackgroundColor('#ef6b4a').setColor('#fff6dc');this.tweens.add({targets:message,scale:1.18,duration:150,yoyo:true});this.time.delayedCall(1000,()=>message.destroy());}else this.tweens.add({targets:message,alpha:0,y:85,duration:350,onComplete:()=>message.destroy()});});
+    this.time.delayedCall(850,()=>{this.refreshProgressHud();this.tweens.add({targets:this.progressText,scale:1.14,duration:130,yoyo:true});const level=SaveService.levelProgress(SaveService.load().xp).level;if(level>levelBefore){AudioService.levelUp();message.setText(`LEVEL UP!  LEVEL ${level}`).setBackgroundColor('#ef6b4a').setColor('#fff6dc');this.tweens.add({targets:message,scale:1.18,duration:150,yoyo:true});this.time.delayedCall(1000,()=>message.destroy());}else this.tweens.add({targets:message,alpha:0,y:85,duration:350,onComplete:()=>message.destroy()});});
   }
   private showToast(message:string){const tx=this.add.text(480,105,message,{fontSize:'18px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#fff6dc'}).setPadding(12,7).setOrigin(.5).setDepth(90);this.tweens.add({targets:tx,y:85,alpha:0,delay:850,duration:350,onComplete:()=>tx.destroy()})}
   private clearOverlay(){this.overlay?.destroy(true);this.overlay=undefined}

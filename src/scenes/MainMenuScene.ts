@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { COLORS } from '../core/GameConfig';
 import { SaveService } from '../core/SaveService';
 import { button } from '../ui/Button';
+import { AudioService } from '../core/AudioService';
 
 export class MainMenuScene extends Phaser.Scene {
   constructor(){ super('Menu'); }
@@ -37,7 +38,7 @@ export class MainMenuScene extends Phaser.Scene {
     const s=SaveService.load(),progress=SaveService.levelProgress(s.xp);
     const xpLabel=progress.maxed?`${s.xp} XP`:`${progress.current}/${progress.needed} XP`;
     this.add.text(w-25,25,`LEVEL ${progress.level}   ${xpLabel}   COINS ${s.coins}`,{fontSize:'18px',color:'#fff6dc',backgroundColor:'#153a4a'}).setOrigin(1,0).setPadding(10);
-    this.input.keyboard?.once('keydown-SPACE',()=>this.scene.start('Pier'));
+    this.input.keyboard?.once('keydown-SPACE',()=>{AudioService.unlock();AudioService.uiSelect();this.scene.start('Pier')});
   }
 
   private scheduleGull(firstFlight=false){

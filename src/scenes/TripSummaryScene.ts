@@ -6,6 +6,7 @@ import type { TripState } from '../gameplay/TripState';
 import { treasureById } from '../gameplay/Treasure';
 import { QuestService } from '../gameplay/QuestService';
 import { button } from '../ui/Button';
+import { AudioService } from '../core/AudioService';
 
 export class TripSummaryScene extends Phaser.Scene {
   private trip!:TripState;
@@ -45,6 +46,7 @@ export class TripSummaryScene extends Phaser.Scene {
 
   private animateRunRewards(hud:Phaser.GameObjects.Text,fromCoins:number,fromXp:number,toCoins:number,toXp:number,levelUp:boolean,level:number){
     if(toCoins===fromCoins&&toXp===fromXp){hud.setText(`LEVEL ${level}   XP ${toXp}   COINS ${toCoins}`);return;}
+    AudioService.coins();
     const particles:Phaser.GameObjects.Text[]=[];
     for(let i=0;i<10;i++){
       const coin=i%2===0,particle=this.add.text(420+i*13,112+(i%3)*8,coin?'●':'✦',{fontSize:coin?'18px':'16px',fontStyle:'bold',color:coin?'#ffd166':'#69d6c5',stroke:'#153a4a',strokeThickness:3}).setOrigin(.5).setDepth(110).setAlpha(0);
@@ -52,7 +54,7 @@ export class TripSummaryScene extends Phaser.Scene {
     }
     this.time.delayedCall(1150,()=>{
       hud.setText(`LEVEL ${level}   XP ${toXp}   COINS ${toCoins}`);this.tweens.add({targets:hud,scale:1.12,duration:120,yoyo:true,ease:'Sine.easeOut'});
-      if(levelUp){const banner=this.add.text(480,142,`LEVEL UP!  LEVEL ${level}`,{fontSize:'25px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a',stroke:'#153a4a',strokeThickness:4}).setPadding(18,9).setOrigin(.5).setDepth(120).setScale(.5);this.tweens.add({targets:banner,scale:1,duration:260,ease:'Back.easeOut'});}
+      if(levelUp){AudioService.levelUp();const banner=this.add.text(480,142,`LEVEL UP!  LEVEL ${level}`,{fontSize:'25px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a',stroke:'#153a4a',strokeThickness:4}).setPadding(18,9).setOrigin(.5).setDepth(120).setScale(.5);this.tweens.add({targets:banner,scale:1,duration:260,ease:'Back.easeOut'});}
       else if(toCoins>fromCoins||toXp>fromXp){const gained=this.add.text(790,53,`+${toCoins-fromCoins} COINS   +${toXp-fromXp} XP`,{fontSize:'13px',fontStyle:'bold',color:'#ffd166'}).setOrigin(.5).setDepth(100);this.tweens.add({targets:gained,alpha:0,y:43,delay:850,duration:300,onComplete:()=>gained.destroy()});}
     });
   }
