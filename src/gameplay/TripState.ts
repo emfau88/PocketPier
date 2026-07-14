@@ -1,9 +1,11 @@
 import { TRIP_CASTS } from '../core/GameConfig';
 import type { Fish } from './Fish';
 import type { TreasureId } from './Treasure';
+import type { FishingLocationId } from './FishingLocation';
 export interface CatchRecord { fish:Fish;weight:number;coins:number;xp:number;isNew:boolean;isRecord:boolean }
 export interface TreasureRecord { id:TreasureId;isNew:boolean }
 export class TripState {
+  constructor(public readonly locationId:FishingLocationId='sunny-pier'){}
   castsLeft=TRIP_CASTS;catches:CatchRecord[]=[];treasures:TreasureRecord[]=[];diveCatchCounts:number[]=[];bonusCoins=0;
   useCast(){this.castsLeft=Math.max(0,this.castsLeft-1)}
   add(x:CatchRecord){this.catches.push(x)}

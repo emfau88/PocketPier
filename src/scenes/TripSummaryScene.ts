@@ -3,7 +3,7 @@ import { COLORS, TRIP_CASTS } from '../core/GameConfig';
 import { SaveService } from '../core/SaveService';
 import { PortalBridge } from '../core/PortalBridge';
 import type { TripState } from '../gameplay/TripState';
-import { treasureById } from '../gameplay/Treasure';
+import { locationById, treasureAcrossLocations } from '../gameplay/FishingLocation';
 import { QuestService } from '../gameplay/QuestService';
 import { button } from '../ui/Button';
 import { AudioService } from '../core/AudioService';
@@ -20,11 +20,13 @@ export class TripSummaryScene extends Phaser.Scene {
     this.trip.catches.forEach(c=>SaveService.recordCatch(save,c.fish.id,c.weight));
     this.trip.treasures.forEach(t=>SaveService.discoverTreasure(save,t.id));
     const completedJobs=QuestService.applyTrip(save,this.trip),newAchievements=QuestService.discoverAchievements(save);
+    const unlockedLocationId=SaveService.completeLocation(save,this.trip.locationId),location=locationById(this.trip.locationId),unlockedLocation=unlockedLocationId?locationById(unlockedLocationId):undefined;
     SaveService.save(save);
     const progress=SaveService.levelProgress(save.xp),levelUp=progress.level>previousLevel;
 
-    this.add.text(480,55,'FISHING TRIP COMPLETE',{fontSize:'36px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(.5);
+    this.add.text(480,55,`${location.name.toUpperCase()} COMPLETE`,{fontSize:'36px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(.5);
     this.add.text(480,105,`${this.trip.catches.length} fish from ${TRIP_CASTS} dives   •   +${this.trip.coins} coins   •   +${this.trip.xp} XP`,{fontSize:'20px',color:'#ffd166'}).setOrigin(.5);
+    if(unlockedLocation){const unlock=this.add.text(480,145,`NEW AREA UNLOCKED: ${unlockedLocation.name.toUpperCase()}`,{fontSize:'17px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#ffd166'}).setPadding(14,7).setOrigin(.5).setScale(.4);this.tweens.add({targets:unlock,scale:1,duration:420,ease:'Back.easeOut'});}
     const progressHud=this.add.text(938,22,`LEVEL ${previousLevel}   XP ${startingXp}   COINS ${startingCoins}`,{fontSize:'15px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(1,0).setDepth(100);
 
     this.trip.catches.slice(0,6).forEach((c,i)=>{
@@ -33,13 +35,13 @@ export class TripSummaryScene extends Phaser.Scene {
       this.add.text(750,y,`${c.weight.toFixed(2)} kg   ${c.coins} coins`,{fontSize:'17px',color:'#a9e5dc'}).setOrigin(1,.5);
     });
     if(this.trip.treasures.length){
-      const names=this.trip.treasures.map(t=>`${treasureById(t.id)?.name??'Treasure'}${t.isNew?' (NEW)':''}`).join('  •  ');
+      const names=this.trip.treasures.map(t=>`${treasureAcrossLocations(t.id)?.name??'Treasure'}${t.isNew?' (NEW)':''}`).join('  •  ');
       this.add.text(480,390,names,{fontSize:'15px',fontStyle:'bold',color:'#ffd166'}).setOrigin(.5);
     }
     if(completedJobs.length)this.add.text(480,420,`HARBOR JOB READY: ${completedJobs.map(job=>job.title).join(', ')}`,{fontSize:'13px',fontStyle:'bold',color:'#a9e5dc'}).setOrigin(.5);
     if(newAchievements.length)this.add.text(480,445,`BADGE READY: ${newAchievements.map(achievement=>achievement.title).join(', ')}`,{fontSize:'13px',fontStyle:'bold',color:'#ffd166'}).setOrigin(.5);
-    button(this,480,480,'NEXT TRIP',()=>this.scene.start('Pier'));
-    button(this,480,530,'MAIN MENU',()=>this.scene.start('Menu'),210);
+    button(this,315,500,'BACK TO PIER',()=>this.scene.start('Pier',{locationId:this.trip.locationId}),300);
+    button(this,665,500,'MAIN MENU',()=>this.scene.start('Menu'),230);
     this.animateRunRewards(progressHud,startingCoins,startingXp,save.coins,save.xp,levelUp,progress.level);
     PortalBridge.requestInterstitial('trip_summary');
   }

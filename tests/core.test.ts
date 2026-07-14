@@ -16,13 +16,38 @@ describe('core logic',()=>{
 
   it('migrates v1 progress without losing coins or xp',()=>{
     const save=SaveService.load({getItem:()=>JSON.stringify({version:1,coins:321,xp:88,tutorialComplete:true,muted:true})});
-    expect(save).toMatchObject({version:3,coins:321,xp:88,tutorialComplete:true,muted:true});
+    expect(save).toMatchObject({version:5,coins:321,xp:88,tutorialComplete:true,muted:true,unlockedLocationIds:['sunny-pier'],completedLocationIds:[],lastLocationId:'sunny-pier'});
     expect(save.fishStats).toEqual({});expect(save.discoveredTreasures).toEqual([]);
   });
 
   it('migrates v2 saves with empty pending badge claims',()=>{
     const save=SaveService.load({getItem:()=>JSON.stringify({version:2,coins:77,xp:44,achievementIds:['first-catch']})});
-    expect(save).toMatchObject({version:3,coins:77,xp:44,achievementIds:['first-catch'],pendingAchievementIds:[]});
+    expect(save).toMatchObject({version:5,coins:77,xp:44,achievementIds:['first-catch'],pendingAchievementIds:[],unlockedLocationIds:['sunny-pier'],lastLocationId:'sunny-pier'});
+  });
+
+  it('unlocks new areas in order while keeping completed areas playable',()=>{
+    const save=SaveService.load({getItem:()=>null});
+    expect(SaveService.isLocationUnlocked(save,'sunny-pier')).toBe(true);
+    expect(SaveService.isLocationUnlocked(save,'rocky-cove')).toBe(false);
+    expect(SaveService.completeLocation(save,'sunny-pier')).toBe('rocky-cove');
+    expect(save.unlockedLocationIds).toEqual(['sunny-pier','rocky-cove']);
+    expect(SaveService.completeLocation(save,'sunny-pier')).toBeUndefined();
+    expect(SaveService.completeLocation(save,'rocky-cove')).toBe('moonlit-trench');
+    expect(save.completedLocationIds).toEqual(['sunny-pier','rocky-cove']);
+    expect(save.unlockedLocationIds).toEqual(['sunny-pier','rocky-cove','moonlit-trench']);
+  });
+
+  it('migrates v3 saves without unlocking later areas early',()=>{
+    const save=SaveService.load({getItem:()=>JSON.stringify({version:3,coins:42,xp:210,fishStats:{minnow:{count:2,bestWeight:.3}}})});
+    expect(save).toMatchObject({version:5,coins:42,xp:210,unlockedLocationIds:['sunny-pier'],completedLocationIds:[],lastLocationId:'sunny-pier'});
+    expect(save.fishStats.minnow.count).toBe(2);
+  });
+
+  it('restores only a last fishing area that is already unlocked',()=>{
+    const rocky=SaveService.load({getItem:()=>JSON.stringify({version:4,unlockedLocationIds:['sunny-pier','rocky-cove'],lastLocationId:'rocky-cove'})});
+    const locked=SaveService.load({getItem:()=>JSON.stringify({version:4,unlockedLocationIds:['sunny-pier'],lastLocationId:'moonlit-trench'})});
+    expect(rocky.lastLocationId).toBe('rocky-cove');
+    expect(locked.lastLocationId).toBe('sunny-pier');
   });
 
   it('records catches without replacing a better record',()=>{

@@ -1,3 +1,5 @@
+import { nextLocation, type FishingLocationId } from '../gameplay/FishingLocation';
+
 export interface FishStat { count:number; bestWeight:number }
 export interface EquipmentLevels { line:number; reel:number; basket:number; bait:number }
 export interface ActiveQuest { id:string; progress:number }
@@ -6,7 +8,7 @@ export const EQUIPMENT_COSTS=[150,250,400] as const;
 export const BOAT_REPAIR_COSTS=[200,350,450] as const;
 export interface BoatProgress { investedCoins:number; unlocked:boolean }
 export interface SaveData {
-  version:3;
+  version:5;
   coins:number;
   xp:number;
   tutorialComplete:boolean;
@@ -22,15 +24,18 @@ export interface SaveData {
   coolerStickerTier:number;
   harborStickerCount:number;
   boat:BoatProgress;
+  unlockedLocationIds:FishingLocationId[];
+  completedLocationIds:FishingLocationId[];
+  lastLocationId:FishingLocationId;
 }
 
 export const LEVEL_THRESHOLDS=[0,100,250,450,700] as const;
 export interface LevelProgress { level:number; current:number; needed:number; maxed:boolean }
 
 const fresh=():SaveData=>({
-  version:3,coins:0,xp:0,tutorialComplete:false,muted:false,fishStats:{},discoveredTreasures:[],
+  version:5,coins:0,xp:0,tutorialComplete:false,muted:false,fishStats:{},discoveredTreasures:[],
   equipment:{line:0,reel:0,basket:0,bait:0},activeQuests:[],questCycle:0,completedQuestIds:[],achievementIds:[],pendingAchievementIds:[],coolerStickerTier:0,harborStickerCount:0,
-  boat:{investedCoins:0,unlocked:false}
+  boat:{investedCoins:0,unlocked:false},unlockedLocationIds:['sunny-pier'],completedLocationIds:[],lastLocationId:'sunny-pier'
 });
 
 function finite(value:unknown,fallback=0){return typeof value==='number'&&Number.isFinite(value)?value:fallback}
@@ -43,10 +48,12 @@ export class SaveService {
     try{
       const value=JSON.parse(storage.getItem(this.key)??'null');
       if(value?.version===1)return {...fresh(),coins:finite(value.coins),xp:finite(value.xp),tutorialComplete:!!value.tutorialComplete,muted:!!value.muted};
-      if(value?.version!==2&&value?.version!==3)return fresh();
+      if(value?.version!==2&&value?.version!==3&&value?.version!==4&&value?.version!==5)return fresh();
       const base=fresh();
+      const unlockedLocationIds=this.locationIds(value.unlockedLocationIds,true);
+      const lastLocationId=this.locationId(value.lastLocationId);
       return {
-        ...base,...value,version:3,coins:Math.max(0,finite(value.coins)),xp:Math.max(0,finite(value.xp)),
+        ...base,...value,version:5,coins:Math.max(0,finite(value.coins)),xp:Math.max(0,finite(value.xp)),
         fishStats:value.fishStats&&typeof value.fishStats==='object'?value.fishStats:{},
         discoveredTreasures:Array.isArray(value.discoveredTreasures)?[...new Set(value.discoveredTreasures.filter((x:unknown)=>typeof x==='string'))]:[],
         equipment:{
@@ -59,12 +66,35 @@ export class SaveService {
         achievementIds:Array.isArray(value.achievementIds)?value.achievementIds:[],
         pendingAchievementIds:Array.isArray(value.pendingAchievementIds)?value.pendingAchievementIds:[],
         harborStickerCount:Math.min(3,Math.max(0,Math.floor(finite(value.harborStickerCount)))),
-        boat:{...base.boat,...value.boat}
+        boat:{...base.boat,...value.boat},
+        unlockedLocationIds,
+        completedLocationIds:this.locationIds(value.completedLocationIds,false),
+        lastLocationId:unlockedLocationIds.includes(lastLocationId)?lastLocationId:'sunny-pier'
       };
     }catch{return fresh()}
   }
 
   static save(data:SaveData,storage:Pick<Storage,'setItem'>=localStorage){storage.setItem(this.key,JSON.stringify(data))}
+
+  private static locationIds(value:unknown,includeSunny:boolean){
+    const allowed:FishingLocationId[]=['sunny-pier','rocky-cove','moonlit-trench'];
+    const result=Array.isArray(value)?value.filter((id:unknown):id is FishingLocationId=>allowed.includes(id as FishingLocationId)):[];
+    if(includeSunny&&!result.includes('sunny-pier'))result.unshift('sunny-pier');
+    return [...new Set(result)];
+  }
+
+  private static locationId(value:unknown):FishingLocationId{
+    return value==='rocky-cove'||value==='moonlit-trench'?value:'sunny-pier';
+  }
+
+  static isLocationUnlocked(data:SaveData,id:FishingLocationId){return data.unlockedLocationIds.includes(id)}
+
+  static completeLocation(data:SaveData,id:FishingLocationId){
+    if(!data.completedLocationIds.includes(id))data.completedLocationIds.push(id);
+    const next=nextLocation(id);
+    if(!next||data.unlockedLocationIds.includes(next.id))return undefined;
+    data.unlockedLocationIds.push(next.id);return next.id;
+  }
 
   static levelProgress(xp:number):LevelProgress{
     const safe=Math.max(0,finite(xp));let index=0;
