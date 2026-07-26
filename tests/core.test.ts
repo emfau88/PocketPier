@@ -3,6 +3,7 @@ import { FISH, fishFlipXForDirection, pickFish } from '../src/gameplay/Fish';
 import { TripState } from '../src/gameplay/TripState';
 import { BOAT_REPAIR_COSTS, EQUIPMENT_COSTS, LEVEL_THRESHOLDS, SaveService } from '../src/core/SaveService';
 import { QuestService } from '../src/gameplay/QuestService';
+import { selectRenderScale } from '../src/core/RenderQuality';
 
 describe('core logic',()=>{
   it('picks an allowed fish',()=>expect(pickFish(0,()=>.9).rarity).toBe('Common'));
@@ -13,6 +14,13 @@ describe('core logic',()=>{
   it('ends after three casts',()=>{const t=new TripState();for(let i=0;i<3;i++)t.useCast();expect(t.complete).toBe(true)});
   it('includes treasure bonuses in trip coins',()=>{const t=new TripState();t.addBonus(25);expect(t.coins).toBe(25)});
   it('recovers from corrupt saves',()=>expect(SaveService.load({getItem:()=>'{bad'}).coins).toBe(0));
+
+  it('selects capped render tiers for desktop and mobile displays',()=>{
+    expect(selectRenderScale(1920,1080,1,false)).toBe(2);
+    expect(selectRenderScale(1366,768,1,false)).toBe(1.5);
+    expect(selectRenderScale(844,390,3,true)).toBe(1.5);
+    expect(selectRenderScale(667,375,1,true)).toBe(1);
+  });
 
   it('migrates v1 progress without losing coins or xp',()=>{
     const save=SaveService.load({getItem:()=>JSON.stringify({version:1,coins:321,xp:88,tutorialComplete:true,muted:true})});

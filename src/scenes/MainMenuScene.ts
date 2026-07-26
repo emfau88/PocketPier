@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { AudioService } from '../core/AudioService';
-import { COLORS } from '../core/GameConfig';
+import { COLORS, GAME_WIDTH } from '../core/GameConfig';
+import { configureSceneRendering } from '../core/RenderQuality';
 import { SaveService } from '../core/SaveService';
 import { button } from '../ui/Button';
 
@@ -8,7 +9,8 @@ export class MainMenuScene extends Phaser.Scene {
   constructor(){super('Menu')}
 
   create(){
-    const w=this.scale.width,reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    configureSceneRendering(this);
+    const w=GAME_WIDTH,reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     const save=SaveService.load(),progress=SaveService.levelProgress(save.xp);
     const xpLabel=progress.maxed?`${save.xp} XP`:`${progress.current}/${progress.needed} XP`;
 

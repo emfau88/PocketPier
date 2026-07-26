@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { AudioService } from '../core/AudioService';
 import { COLORS, TRIP_CASTS } from '../core/GameConfig';
 import { PortalBridge } from '../core/PortalBridge';
+import { configureSceneRendering } from '../core/RenderQuality';
 import { BOAT_REPAIR_COSTS, SaveService, type EquipmentId } from '../core/SaveService';
 import { ACHIEVEMENTS, QuestService, questById } from '../gameplay/QuestService';
 import { fishFlipXForDirection, type Fish } from '../gameplay/Fish';
@@ -35,6 +36,7 @@ export class PierGameplayScene extends Phaser.Scene {
   constructor(){super('Pier')}
   init(data:{locationId?:FishingLocationId}={}){this.location=locationById(data.locationId);this.trip=new TripState(this.location.id);this.phase='CAST';this.inputLockedUntil=0}
   create(){
+    configureSceneRendering(this);
     this.reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     PortalBridge.gameplayStart();this.surface=this.add.container(0,0);this.drawSurface();
     this.title=this.add.text(480,28,'',{fontSize:'25px',fontStyle:'bold',color:'#fff6dc',stroke:'#153a4a',strokeThickness:6}).setOrigin(.5).setDepth(100);

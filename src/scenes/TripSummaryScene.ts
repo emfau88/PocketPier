@@ -7,6 +7,7 @@ import { locationById, treasureAcrossLocations } from '../gameplay/FishingLocati
 import { QuestService } from '../gameplay/QuestService';
 import { button } from '../ui/Button';
 import { AudioService } from '../core/AudioService';
+import { configureSceneRendering } from '../core/RenderQuality';
 
 export class TripSummaryScene extends Phaser.Scene {
   private trip!:TripState;
@@ -14,6 +15,7 @@ export class TripSummaryScene extends Phaser.Scene {
   init(data:{trip:TripState}){this.trip=data.trip}
 
   create(){
+    configureSceneRendering(this);
     this.cameras.main.setBackgroundColor(COLORS.navy);
     const save=SaveService.load(),startingCoins=save.coins,startingXp=save.xp,previousLevel=SaveService.levelProgress(save.xp).level;
     save.coins+=this.trip.coins;save.xp+=this.trip.xp;save.tutorialComplete=true;
