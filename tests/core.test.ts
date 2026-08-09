@@ -4,6 +4,7 @@ import { TripState } from '../src/gameplay/TripState';
 import { BOAT_REPAIR_COSTS, EQUIPMENT_COSTS, LEVEL_THRESHOLDS, SaveService } from '../src/core/SaveService';
 import { QuestService } from '../src/gameplay/QuestService';
 import { selectRenderScale } from '../src/core/RenderQuality';
+import { LOCATION_ASSETS, MENU_ASSETS, PIER_ASSETS } from '../src/core/AssetManifest';
 
 describe('core logic',()=>{
   it('picks an allowed fish',()=>expect(pickFish(0,()=>.9).rarity).toBe('Common'));
@@ -114,5 +115,33 @@ describe('core logic',()=>{
     const save=SaveService.load({getItem:()=>null});SaveService.recordCatch(save,'minnow',.3);
     const ready=QuestService.discoverAchievements(save);expect(ready.map(badge=>badge.id)).toContain('first-catch');expect(save.achievementIds).not.toContain('first-catch');
     const reward=QuestService.claimAchievement(save,'first-catch');expect(reward?.coins).toBe(30);expect(save.achievementIds).toContain('first-catch');expect(save.pendingAchievementIds).not.toContain('first-catch');
+  });
+});
+
+describe('runtime asset pipeline',()=>{
+  const locationAssets=Object.values(LOCATION_ASSETS).flat();
+  const allAssets=[...MENU_ASSETS,...PIER_ASSETS,...locationAssets];
+
+  it('keeps the boot payload separate from pier and location content',()=>{
+    expect(MENU_ASSETS.length).toBeLessThan(PIER_ASSETS.length);
+    expect(Object.values(LOCATION_ASSETS).every(assets=>assets.length>=6)).toBe(true);
+    expect(MENU_ASSETS.some(asset=>asset.key==='bg-pier-remaster')).toBe(false);
+  });
+
+  it('uses unique cache keys across every staged asset group',()=>{
+    const keys=allAssets.map(asset=>asset.key);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it('serves images from the compressed runtime set',()=>{
+    const images=allAssets.filter(asset=>asset.kind==='image');
+    expect(images.length).toBeGreaterThan(30);
+    expect(images.every(asset=>asset.url.endsWith('.webp')&&asset.url.includes('/assets/runtime/'))).toBe(true);
+  });
+
+  it('serves sounds from the compact runtime set',()=>{
+    const sounds=allAssets.filter(asset=>asset.kind==='audio');
+    expect(sounds.length).toBeGreaterThan(10);
+    expect(sounds.every(asset=>asset.url.endsWith('.m4a')&&asset.url.includes('/audio/runtime/'))).toBe(true);
   });
 });

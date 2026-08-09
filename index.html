@@ -6,8 +6,13 @@
     <meta name="theme-color" content="#77cbd1" />
     <title>Pocket Pier</title>
     <style>
-      html,body,#game{width:100%;height:100%;margin:0;overflow:hidden;background:#153a4a}body{font-family:system-ui,sans-serif;touch-action:none}canvas{display:block;margin:auto}
+      :root{--safe-area-top:env(safe-area-inset-top,0px);--safe-area-right:env(safe-area-inset-right,0px);--safe-area-bottom:env(safe-area-inset-bottom,0px);--safe-area-left:env(safe-area-inset-left,0px)}
+      html,body,#game{width:100%;height:100%;margin:0;overflow:hidden;background:#153a4a}
+      body{font-family:system-ui,sans-serif;touch-action:none;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+      canvas{display:block;margin:auto}
+      #rotate-device{display:none;position:fixed;inset:0;z-index:9999;box-sizing:border-box;align-items:center;justify-content:center;text-align:center;padding:calc(28px + var(--safe-area-top)) calc(28px + var(--safe-area-right)) calc(28px + var(--safe-area-bottom)) calc(28px + var(--safe-area-left));background:#153a4a;color:#fff6dc;font:700 22px/1.35 system-ui,sans-serif}
+      @media (orientation:portrait) and (max-width:900px){#rotate-device{display:flex}}
     </style>
   </head>
-  <body><div id="game"></div><script type="module" src="/src/main.ts"></script></body>
+  <body><div id="game"></div><div id="rotate-device" role="status">ROTATE YOUR DEVICE<br />POCKET PIER PLAYS IN LANDSCAPE</div><script type="module" src="/src/main.ts"></script></body>
 </html>

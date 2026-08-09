@@ -7,7 +7,8 @@ import { locationById, treasureAcrossLocations } from '../gameplay/FishingLocati
 import { QuestService } from '../gameplay/QuestService';
 import { button } from '../ui/Button';
 import { AudioService } from '../core/AudioService';
-import { configureSceneRendering } from '../core/RenderQuality';
+import { configureSceneRendering, safeAreaInsets } from '../core/RenderQuality';
+import type { Fish } from '../gameplay/Fish';
 
 export class TripSummaryScene extends Phaser.Scene {
   private trip!:TripState;
@@ -17,6 +18,7 @@ export class TripSummaryScene extends Phaser.Scene {
   create(){
     configureSceneRendering(this);
     this.cameras.main.setBackgroundColor(COLORS.navy);
+    const safe=safeAreaInsets(this);
     const save=SaveService.load(),startingCoins=save.coins,startingXp=save.xp,previousLevel=SaveService.levelProgress(save.xp).level;
     save.coins+=this.trip.coins;save.xp+=this.trip.xp;save.tutorialComplete=true;
     this.trip.catches.forEach(c=>SaveService.recordCatch(save,c.fish.id,c.weight));
@@ -29,12 +31,16 @@ export class TripSummaryScene extends Phaser.Scene {
     this.add.text(480,55,`${location.name.toUpperCase()} COMPLETE`,{fontSize:'36px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(.5);
     this.add.text(480,105,`${this.trip.catches.length} fish from ${TRIP_CASTS} dives   •   +${this.trip.coins} coins   •   +${this.trip.xp} XP`,{fontSize:'20px',color:'#ffd166'}).setOrigin(.5);
     if(unlockedLocation){const unlock=this.add.text(480,145,`NEW AREA UNLOCKED: ${unlockedLocation.name.toUpperCase()}`,{fontSize:'17px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#ffd166'}).setPadding(14,7).setOrigin(.5).setScale(.4);this.tweens.add({targets:unlock,scale:1,duration:420,ease:'Back.easeOut'});}
-    const progressHud=this.add.text(938,22,`LEVEL ${previousLevel}   XP ${startingXp}   COINS ${startingCoins}`,{fontSize:'15px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(1,0).setDepth(100);
+    const progressHud=this.add.text(938-safe.right,22+safe.top,`LEVEL ${previousLevel}   XP ${startingXp}   COINS ${startingCoins}`,{fontSize:'16px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(1,0).setDepth(100);
 
-    this.trip.catches.slice(0,6).forEach((c,i)=>{
+    const catchRows=[...this.trip.catches.reduce((rows,c)=>{
+      const row=rows.get(c.fish.id)??{fish:c.fish,count:0,bestWeight:0,coins:0,isNew:false,isRecord:false};
+      row.count++;row.bestWeight=Math.max(row.bestWeight,c.weight);row.coins+=c.coins;row.isNew ||= c.isNew;row.isRecord ||= c.isRecord;rows.set(c.fish.id,row);return rows;
+    },new Map<string,{fish:Fish;count:number;bestWeight:number;coins:number;isNew:boolean;isRecord:boolean}>()).values()];
+    catchRows.forEach((c,i)=>{
       const y=180+i*34,badge=c.isNew?'NEW':c.isRecord?'RECORD':'';
-      this.add.text(210,y,`${c.fish.name}${badge?`  •  ${badge}`:''}`,{fontSize:'17px',fontStyle:badge?'bold':'normal',color:badge?'#ffd166':'#fff6dc'}).setOrigin(0,.5);
-      this.add.text(750,y,`${c.weight.toFixed(2)} kg   ${c.coins} coins`,{fontSize:'17px',color:'#a9e5dc'}).setOrigin(1,.5);
+      this.add.text(210,y,`${c.fish.name}${c.count>1?`  ×${c.count}`:''}${badge?`  •  ${badge}`:''}`,{fontSize:'17px',fontStyle:badge?'bold':'normal',color:badge?'#ffd166':'#fff6dc'}).setOrigin(0,.5);
+      this.add.text(750,y,`best ${c.bestWeight.toFixed(2)} kg   ${c.coins} coins`,{fontSize:'17px',color:'#a9e5dc'}).setOrigin(1,.5);
     });
     if(this.trip.treasures.length){
       const names=this.trip.treasures.map(t=>`${treasureAcrossLocations(t.id)?.name??'Treasure'}${t.isNew?' (NEW)':''}`).join('  •  ');
@@ -42,8 +48,8 @@ export class TripSummaryScene extends Phaser.Scene {
     }
     if(completedJobs.length)this.add.text(480,420,`HARBOR JOB READY: ${completedJobs.map(job=>job.title).join(', ')}`,{fontSize:'13px',fontStyle:'bold',color:'#a9e5dc'}).setOrigin(.5);
     if(newAchievements.length)this.add.text(480,445,`BADGE READY: ${newAchievements.map(achievement=>achievement.title).join(', ')}`,{fontSize:'13px',fontStyle:'bold',color:'#ffd166'}).setOrigin(.5);
-    button(this,315,500,'BACK TO PIER',()=>this.scene.start('Pier',{locationId:this.trip.locationId}),300);
-    button(this,665,500,'MAIN MENU',()=>this.scene.start('Menu'),230);
+    button(this,315,500-safe.bottom,'BACK TO PIER',()=>this.scene.start('Pier',{locationId:this.trip.locationId}),300);
+    button(this,665,500-safe.bottom,'MAIN MENU',()=>this.scene.start('Menu'),230);
     this.animateRunRewards(progressHud,startingCoins,startingXp,save.coins,save.xp,levelUp,progress.level);
     PortalBridge.requestInterstitial('trip_summary');
   }

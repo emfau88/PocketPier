@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { AudioService } from '../core/AudioService';
 import { COLORS, GAME_WIDTH } from '../core/GameConfig';
-import { configureSceneRendering } from '../core/RenderQuality';
+import { configureSceneRendering, safeAreaInsets } from '../core/RenderQuality';
 import { SaveService } from '../core/SaveService';
 import { button } from '../ui/Button';
 
@@ -39,9 +39,11 @@ export class MainMenuScene extends Phaser.Scene {
     this.add.text(w/2,484,`Next stop: ${this.locationLabel(save.lastLocationId)}`,{
       fontFamily:'system-ui',fontSize:'14px',fontStyle:'bold',color:'#fff6dc',stroke:'#153a4a',strokeThickness:4
     }).setOrigin(.5).setDepth(20);
-    this.add.text(w-18,18,`LEVEL ${progress.level}   ${xpLabel}   COINS ${save.coins}`,{
-      fontFamily:'system-ui',fontSize:'15px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#153a4a'
+    const progressText=this.add.text(w-18,18,`LEVEL ${progress.level}   ${xpLabel}   COINS ${save.coins}`,{
+      fontFamily:'system-ui',fontSize:'16px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#153a4a'
     }).setOrigin(1,0).setPadding(9,7).setDepth(30);
+    const layoutProgress=()=>{const safe=safeAreaInsets(this);progressText.setPosition(w-18-safe.right,18+safe.top)};
+    layoutProgress();this.events.on('render-quality-changed',layoutProgress);
 
     this.input.keyboard?.once('keydown-SPACE',()=>{
       AudioService.unlock();AudioService.uiSelect();this.startFishing(save.lastLocationId);
@@ -49,7 +51,7 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   private startFishing(locationId:'sunny-pier'|'rocky-cove'|'moonlit-trench'){
-    this.scene.start('Pier',{locationId});
+    this.scene.start('Loading',{locationId});
   }
 
   private locationLabel(locationId:'sunny-pier'|'rocky-cove'|'moonlit-trench'){

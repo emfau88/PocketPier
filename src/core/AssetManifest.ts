@@ -1,0 +1,118 @@
+import type Phaser from 'phaser';
+import type { FishingLocationId } from '../gameplay/FishingLocation';
+
+interface ImageAsset { kind:'image'; key:string; url:string }
+interface AudioAsset { kind:'audio'; key:string; url:string }
+export type GameAsset=ImageAsset|AudioAsset;
+
+const image=(key:string,url:URL):ImageAsset=>({kind:'image',key,url:url.href});
+const audio=(key:string,url:URL):AudioAsset=>({kind:'audio',key,url:url.href});
+
+export const MENU_ASSETS:GameAsset[]=[
+  image('menu-ocean-morning',new URL('../assets/runtime/menu_ocean_morning_base.webp',import.meta.url)),
+  image('menu-water-shimmer',new URL('../assets/runtime/menu_water_shimmer.webp',import.meta.url)),
+  image('menu-gull-up',new URL('../assets/runtime/menu_gull_up.webp',import.meta.url)),
+  image('menu-gull-glide',new URL('../assets/runtime/menu_gull_glide.webp',import.meta.url)),
+  image('menu-gull-down',new URL('../assets/runtime/menu_gull_down.webp',import.meta.url)),
+  image('bobber-basic',new URL('../assets/runtime/bobber_basic.webp',import.meta.url)),
+  audio('sfx-ui-select',new URL('../assets/audio/runtime/ui_select.m4a',import.meta.url))
+];
+
+export const PIER_ASSETS:GameAsset[]=[
+  image('bg-pier-remaster',new URL('../assets/runtime/bg_sunny_pier_remaster.webp',import.meta.url)),
+  image('surface-clouds',new URL('../assets/runtime/surface_clouds.webp',import.meta.url)),
+  image('angler-chair-perspective',new URL('../assets/runtime/character_angler_chair_perspective.webp',import.meta.url)),
+  image('hub-cooler',new URL('../assets/runtime/hub_cooler.webp',import.meta.url)),
+  image('hub-tacklebox-closed',new URL('../assets/runtime/hub_tacklebox_closed.webp',import.meta.url)),
+  image('hub-tacklebox-open',new URL('../assets/runtime/hub_tacklebox_open.webp',import.meta.url)),
+  image('upgrade-icons',new URL('../assets/runtime/ui_upgrade_icons.webp',import.meta.url)),
+  image('hub-jobs-notice',new URL('../assets/runtime/hub_jobs_notice.webp',import.meta.url)),
+  image('harbor-notes',new URL('../assets/runtime/ui_harbor_notes.webp',import.meta.url)),
+  image('hub-boat-states',new URL('../assets/runtime/hub_boat_side_states.webp',import.meta.url)),
+  image('hook-basic',new URL('../assets/runtime/hook_basic.webp',import.meta.url)),
+  image('splash',new URL('../assets/runtime/fx_water_splash.webp',import.meta.url)),
+  image('ui-fishing-spots-map',new URL('../assets/runtime/ui_fishing_spots_map.webp',import.meta.url)),
+  image('ui-spot-sunny',new URL('../assets/runtime/ui_spot_sunny.webp',import.meta.url)),
+  image('ui-spot-rocky',new URL('../assets/runtime/ui_spot_rocky.webp',import.meta.url)),
+  image('ui-spot-moonlit',new URL('../assets/runtime/ui_spot_moonlit.webp',import.meta.url)),
+  audio('sfx-ui-cancel',new URL('../assets/audio/runtime/ui_cancel.m4a',import.meta.url)),
+  audio('sfx-ui-pop',new URL('../assets/audio/runtime/ui_pop.m4a',import.meta.url)),
+  audio('sfx-book-open',new URL('../assets/audio/runtime/book_open.m4a',import.meta.url)),
+  audio('sfx-book-close',new URL('../assets/audio/runtime/book_close.m4a',import.meta.url)),
+  audio('sfx-jobs-open',new URL('../assets/audio/runtime/jobs_open.m4a',import.meta.url)),
+  audio('sfx-gear-equip',new URL('../assets/audio/runtime/gear_equip.m4a',import.meta.url)),
+  audio('sfx-coins',new URL('../assets/audio/runtime/coins.m4a',import.meta.url)),
+  audio('sfx-boat-knock',new URL('../assets/audio/runtime/boat_knock.m4a',import.meta.url)),
+  audio('sfx-cast',new URL('../assets/audio/runtime/cast_twang.m4a',import.meta.url)),
+  audio('sfx-splash',new URL('../assets/audio/runtime/water_splash.m4a',import.meta.url)),
+  audio('sfx-bite',new URL('../assets/audio/runtime/bite_plop.m4a',import.meta.url)),
+  audio('sfx-catch',new URL('../assets/audio/runtime/catch_chime.m4a',import.meta.url)),
+  audio('sfx-treasure',new URL('../assets/audio/runtime/treasure_mystery.m4a',import.meta.url)),
+  audio('sfx-claim',new URL('../assets/audio/runtime/claim_chime.m4a',import.meta.url)),
+  audio('sfx-level-up',new URL('../assets/audio/runtime/level_up.m4a',import.meta.url))
+];
+
+export const LOCATION_ASSETS:Record<FishingLocationId,GameAsset[]>={
+  'sunny-pier':[
+    image('bg-underwater',new URL('../assets/runtime/bg_underwater_sunny_pier.webp',import.meta.url)),
+    image('fish-minnow',new URL('../assets/runtime/fish_minnow_hero.webp',import.meta.url)),
+    image('fish-sardine',new URL('../assets/runtime/fish_sardine_hero.webp',import.meta.url)),
+    image('secret-bottle',new URL('../assets/runtime/secret_bottle.webp',import.meta.url)),
+    image('secret-pearl',new URL('../assets/runtime/secret_pearl.webp',import.meta.url)),
+    image('secret-compass',new URL('../assets/runtime/secret_compass.webp',import.meta.url))
+  ],
+  'rocky-cove':[
+    image('bg-underwater-rocky',new URL('../assets/runtime/bg_underwater_rocky_cove.webp',import.meta.url)),
+    image('fish-kelp-wrasse',new URL('../assets/runtime/fish_kelp_wrasse.webp',import.meta.url)),
+    image('fish-tide-mackerel',new URL('../assets/runtime/fish_tide_mackerel.webp',import.meta.url)),
+    image('fish-ember-rockfish',new URL('../assets/runtime/fish_ember_rockfish.webp',import.meta.url)),
+    image('treasure-barnacle-bell',new URL('../assets/runtime/treasure_barnacle_bell.webp',import.meta.url)),
+    image('treasure-lost-spyglass',new URL('../assets/runtime/treasure_lost_spyglass.webp',import.meta.url)),
+    image('treasure-sea-glass-charm',new URL('../assets/runtime/treasure_sea_glass_charm.webp',import.meta.url))
+  ],
+  'moonlit-trench':[
+    image('bg-underwater-moonlit',new URL('../assets/runtime/bg_underwater_moonlit_trench.webp',import.meta.url)),
+    image('fish-lantern-fin',new URL('../assets/runtime/fish_lantern_fin.webp',import.meta.url)),
+    image('fish-midnight-eel',new URL('../assets/runtime/fish_midnight_eel.webp',import.meta.url)),
+    image('fish-royal-starfin',new URL('../assets/runtime/fish_royal_starfin.webp',import.meta.url)),
+    image('treasure-glow-crystal',new URL('../assets/runtime/treasure_glow_crystal.webp',import.meta.url)),
+    image('treasure-captain-locket',new URL('../assets/runtime/treasure_captain_locket.webp',import.meta.url)),
+    image('treasure-ancient-idol',new URL('../assets/runtime/treasure_ancient_idol.webp',import.meta.url))
+  ]
+};
+
+export function queueMissingAssets(scene:Phaser.Scene,assets:GameAsset[]){
+  let queued=0;
+  for(const asset of assets){
+    const exists=asset.kind==='image'?scene.textures.exists(asset.key):scene.cache.audio.exists(asset.key);
+    if(exists)continue;
+    if(asset.kind==='image')scene.load.image(asset.key,asset.url);else scene.load.audio(asset.key,asset.url);
+    queued++;
+  }
+  return queued;
+}
+
+export function configurePierTextureFrames(scene:Phaser.Scene){
+  const clouds=scene.textures.get('surface-clouds');
+  if(!clouds.has('cloud-a')){
+    clouds.add('cloud-a',0,70,375,430,175);
+    clouds.add('cloud-b',0,585,365,410,190);
+    clouds.add('cloud-c',0,1060,378,430,175);
+  }
+  const icons=scene.textures.get('upgrade-icons');
+  if(!icons.has('line-icon')){
+    const source=icons.getSourceImage() as HTMLImageElement,halfWidth=Math.floor(source.width/2),halfHeight=Math.floor(source.height/2);
+    icons.add('line-icon',0,0,0,halfWidth,halfHeight);
+    icons.add('reel-icon',0,halfWidth,0,source.width-halfWidth,halfHeight);
+    icons.add('basket-icon',0,0,halfHeight,halfWidth,source.height-halfHeight);
+    icons.add('bait-icon',0,halfWidth,halfHeight,source.width-halfWidth,source.height-halfHeight);
+  }
+  const boats=scene.textures.get('hub-boat-states');
+  if(!boats.has('boat-broken')){
+    const source=boats.getSourceImage() as HTMLImageElement,width=Math.floor(source.width/2),height=Math.floor(source.height/2);
+    boats.add('boat-broken',0,0,0,width,height);
+    boats.add('boat-hull',0,width,0,source.width-width,height);
+    boats.add('boat-motor',0,0,height,width,source.height-height);
+    boats.add('boat-ready',0,width,height,source.width-width,source.height-height);
+  }
+}

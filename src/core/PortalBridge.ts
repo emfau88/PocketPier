@@ -1,6 +1,8 @@
 export class PortalBridge {
   private static muted = false;
   static async init() { this.submitAnalyticsEvent('game_boot'); }
+  static loadingStart() { this.submitAnalyticsEvent('loading_start'); }
+  static loadingStop() { this.submitAnalyticsEvent('loading_stop'); }
   static gameplayStart() { this.submitAnalyticsEvent('gameplay_start'); }
   static gameplayStop() { this.submitAnalyticsEvent('gameplay_stop'); }
   static async requestInterstitial(reason: string) { this.submitAnalyticsEvent('interstitial_requested', { reason }); }
