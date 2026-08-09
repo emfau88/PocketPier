@@ -11,6 +11,7 @@ import type { TreasureId } from '../gameplay/Treasure';
 import { TripState } from '../gameplay/TripState';
 import { FISHING_LOCATIONS, locationById, type FishingLocation, type FishingLocationId } from '../gameplay/FishingLocation';
 import { castQualityFromMarker, currentVector, obstaclesForLocation, pointHitsObstacle, treasureChance, treasureSpawnPoint } from '../gameplay/UnderwaterEnvironment';
+import { joystickKnobPosition, virtualJoystickVector } from '../gameplay/TouchControls';
 
 type Phase='CAST'|'FLIGHT'|'UNDERWATER'|'RETRACTING'|'RESULT';
 type Target={fish:Fish;sprite:Phaser.GameObjects.Image;aura:Phaser.GameObjects.Arc;badge:Phaser.GameObjects.Text;slots:number;capture:number;direction:number;speed:number;baseY:number;phase:number;lastTouchAt:number};
@@ -21,15 +22,16 @@ export class PierGameplayScene extends Phaser.Scene {
   private title!:Phaser.GameObjects.Text; private help!:Phaser.GameObjects.Text; private meter!:Phaser.GameObjects.Graphics; private castHint!:Phaser.GameObjects.Text; private progressText!:Phaser.GameObjects.Text; private locationText!:Phaser.GameObjects.Text;
   private angler!:Phaser.GameObjects.Image; private bobber!:Phaser.GameObjects.Image;
   private hookPos=new Phaser.Math.Vector2(480,92); private hookTarget=new Phaser.Math.Vector2(480,92); private anchor=new Phaser.Math.Vector2(480,70);
-  private rope!:Phaser.GameObjects.Graphics; private hookArt!:Phaser.GameObjects.Graphics; private captureArt!:Phaser.GameObjects.Graphics;
+  private rope!:Phaser.GameObjects.Graphics; private hookArt!:Phaser.GameObjects.Graphics; private captureArt!:Phaser.GameObjects.Graphics;private captureLabel!:Phaser.GameObjects.Text;
   private hookSprite!:Phaser.GameObjects.Image;
-  private lineText!:Phaser.GameObjects.Text; private basketText!:Phaser.GameObjects.Text; private diveHint!:Phaser.GameObjects.Text; private reelBg!:Phaser.GameObjects.Rectangle; private reelTx!:Phaser.GameObjects.Text;
+  private lineHud!:Phaser.GameObjects.Container;private lineText!:Phaser.GameObjects.Text;private lineValueText!:Phaser.GameObjects.Text;private lineFill!:Phaser.GameObjects.Rectangle; private basketText!:Phaser.GameObjects.Text; private diveHint!:Phaser.GameObjects.Text; private reelBg!:Phaser.GameObjects.Rectangle; private reelTx!:Phaser.GameObjects.Text;
   private targets:Target[]=[]; private caught:{fish:Fish;sprite:Phaser.GameObjects.Image}[]=[]; private usedSlots=0; private maxSlots=2; private treasureFound=false;
   private treasure?:Phaser.GameObjects.Container; private maxLinePx=590; private lineMeters=22; private hookMoveSpeed=165; private reelSpeed=340; private basketDrag=.025; private baitLevel=0; private pointerSteering=false; private inputLockedUntil=0;
   private lineLevel=0;private reelLevel=0;private basketLevel=0;private baitGlow?:Phaser.GameObjects.Arc;private treasurePosition=new Phaser.Math.Vector2(802,447);private moonlitShade?:Phaser.GameObjects.Rectangle;private moonlitMaskSource?:Phaser.GameObjects.Graphics;private moonlitGlow?:Phaser.GameObjects.Arc;
   private trail:Phaser.Math.Vector2[]=[]; private retractIndex=0;
   private keys!:Record<string,Phaser.Input.Keyboard.Key>;
   private reducedMotion=false;
+  private touchControls=false;private joystickPointerId?:number;private joystickOrigin=new Phaser.Math.Vector2();private joystickVector=new Phaser.Math.Vector2();private joystickBase?:Phaser.GameObjects.Arc;private joystickKnob?:Phaser.GameObjects.Arc;private controlOnboarding?:Phaser.GameObjects.Container;
   private safeTop=0;
   private surfaceClouds:{sprite:Phaser.GameObjects.Image;speed:number}[]=[];
   private cooler!:Phaser.GameObjects.Image;private tacklebox!:Phaser.GameObjects.Image;private boatSprite!:Phaser.GameObjects.Image;private boatZone!:Phaser.GameObjects.Zone;private noticeBoard!:Phaser.GameObjects.Zone;private spotsZone?:Phaser.GameObjects.Zone;private collectionModal?:Phaser.GameObjects.Container;private tackleModal?:Phaser.GameObjects.Container;private jobsModal?:Phaser.GameObjects.Container;private boatModal?:Phaser.GameObjects.Container;private spotsModal?:Phaser.GameObjects.Container;private modalOpen=false;
@@ -42,6 +44,7 @@ export class PierGameplayScene extends Phaser.Scene {
   create(){
     configureSceneRendering(this);
     this.reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    this.touchControls=window.matchMedia?.('(pointer: coarse)').matches ?? false;
     PortalBridge.gameplayStart();this.surface=this.add.container(0,0);this.drawSurface();
     this.title=this.add.text(480,28,'',{fontSize:'25px',fontStyle:'bold',color:'#fff6dc',stroke:'#153a4a',strokeThickness:6}).setOrigin(.5).setDepth(100);
     this.help=this.add.text(480,500,'',{fontSize:'20px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#fff6dc',align:'center'}).setPadding(14,9).setOrigin(.5).setDepth(100);
@@ -55,10 +58,11 @@ export class PierGameplayScene extends Phaser.Scene {
       if(this.phase==='CAST'&&this.noticeBoard?.getBounds().contains(p.worldX,p.worldY)){AudioService.jobsOpen();this.openJobs('jobs');return}
       if(this.phase==='CAST'&&this.boatZone?.getBounds().contains(p.worldX,p.worldY)){AudioService.boatOpen();this.openBoatRepair();return}
       if(this.phase==='CAST'&&this.angler?.input?.enabled&&(this.angler.getBounds().contains(p.worldX,p.worldY)||this.spotsZone?.getBounds().contains(p.worldX,p.worldY))){if(this.trip.castsLeft!==TRIP_CASTS){AudioService.fail();this.showToast('Finish this trip before changing fishing spots.');return}AudioService.bookOpen();this.openFishingSpots();return}
-      this.pointerSteering=true;this.hookTarget.set(p.worldX,p.worldY);this.press();
+      if(this.phase==='UNDERWATER'&&this.touchControls){if(this.reelBg?.getBounds().contains(p.worldX,p.worldY))return;this.beginTouchSteering(p);return}
+      this.pointerSteering=this.phase==='UNDERWATER';this.hookTarget.set(p.worldX,p.worldY);this.press();
     });
-    this.input.on('pointermove',(p:Phaser.Input.Pointer)=>{if(this.pointerSteering)this.hookTarget.set(p.worldX,p.worldY)});
-    this.input.on('pointerup',()=>this.pointerSteering=false);
+    this.input.on('pointermove',(p:Phaser.Input.Pointer)=>{if(this.touchControls&&this.joystickPointerId!==undefined)this.updateTouchSteering(p);else if(this.pointerSteering)this.hookTarget.set(p.worldX,p.worldY)});
+    this.input.on('pointerup',(p:Phaser.Input.Pointer)=>{this.pointerSteering=false;this.endTouchSteering(p)});
     this.layoutSafeArea();this.events.on('render-quality-changed',()=>this.layoutSafeArea());this.beginCast();
   }
   private drawSurface(){
@@ -139,8 +143,8 @@ export class PierGameplayScene extends Phaser.Scene {
     }});
   }
   private startUnderwater(){
-    this.phase='UNDERWATER';this.surface.setVisible(false);this.help.setVisible(false);this.title.setText('');this.hookPos.set(480,92);this.hookTarget.copy(this.hookPos);this.usedSlots=0;this.caught=[];this.treasureFound=false;this.currentTreasureId=undefined;this.targets=[];this.touchingTarget=undefined;
-    const equipment=SaveService.load().equipment;
+    this.phase='UNDERWATER';this.surface.setVisible(false);this.help.setVisible(false);this.title.setText('');this.hookPos.set(480,92);this.hookTarget.copy(this.hookPos);this.usedSlots=0;this.caught=[];this.treasureFound=false;this.currentTreasureId=undefined;this.targets=[];this.touchingTarget=undefined;this.joystickPointerId=undefined;this.joystickVector.set(0,0);this.joystickBase=undefined;this.joystickKnob=undefined;this.controlOnboarding=undefined;
+    const save=SaveService.load(),equipment=save.equipment;
     this.lineLevel=equipment.line;this.reelLevel=equipment.reel;this.basketLevel=equipment.basket;this.maxLinePx=590+equipment.line*45+this.castQuality*30;this.lineMeters=22+equipment.line*2;
     this.hookMoveSpeed=165*(1+equipment.reel*.07);this.reelSpeed=340*(1+equipment.reel*.08);
     this.maxSlots=2+(equipment.basket>=3?1:0);this.basketDrag=Math.max(.01,.025-equipment.basket*.005);this.baitLevel=equipment.bait;
@@ -149,8 +153,9 @@ export class PierGameplayScene extends Phaser.Scene {
     for(const [x,y,s] of [[80,440,1],[180,475,.8],[720,485,.9],[875,430,.75]] as number[][]){const weed=this.add.graphics();weed.lineStyle(10,0x3f9b83,.9);for(let j=0;j<3;j++)weed.beginPath().moveTo(x+j*13,y+80).lineTo(x-8+j*14,y+25-j*7).strokePath();weed.setScale(s);c.add(weed)}
     if(this.location.id==='rocky-cove')this.drawRockyEnvironment(c);
     this.addLocationDepthLayers(c);
-    this.rope=this.add.graphics().setDepth(35);this.hookArt=this.add.graphics().setVisible(false);this.captureArt=this.add.graphics().setDepth(39);this.baitGlow=this.add.circle(this.hookPos.x,this.hookPos.y,17+this.baitLevel*4,0xffd166,.04+this.baitLevel*.035).setStrokeStyle(1+this.baitLevel*.6,0xffd166,.18+this.baitLevel*.12).setVisible(this.baitLevel>0).setDepth(39);this.hookSprite=this.add.image(this.hookPos.x,this.hookPos.y,'hook-basic').setDisplaySize(52,66).setDepth(40);c.add([this.rope,this.hookArt,this.captureArt,this.baitGlow,this.hookSprite]);this.trail=[this.anchor.clone(),this.hookPos.clone()];
-    this.lineText=this.add.text(24,18,'',{fontSize:'18px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#153a4a'}).setPadding(12,8).setDepth(60);
+    this.rope=this.add.graphics().setDepth(35);this.hookArt=this.add.graphics().setVisible(false);this.captureArt=this.add.graphics().setDepth(39);this.captureLabel=this.add.text(0,0,'',{fontSize:'12px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#ffd166'}).setPadding(6,3).setOrigin(.5).setVisible(false).setDepth(42);this.baitGlow=this.add.circle(this.hookPos.x,this.hookPos.y,17+this.baitLevel*4,0xffd166,.04+this.baitLevel*.035).setStrokeStyle(1+this.baitLevel*.6,0xffd166,.18+this.baitLevel*.12).setVisible(this.baitLevel>0).setDepth(39);this.hookSprite=this.add.image(this.hookPos.x,this.hookPos.y,'hook-basic').setDisplaySize(52,66).setDepth(40);c.add([this.rope,this.hookArt,this.captureArt,this.captureLabel,this.baitGlow,this.hookSprite]);this.trail=[this.anchor.clone(),this.hookPos.clone()];
+    const linePanel=this.add.rectangle(0,0,224,54,0x153a4a,.94).setStrokeStyle(2,0xfff6dc,.55).setOrigin(0),lineTrack=this.add.rectangle(12,40,200,10,0xfff6dc,.24).setOrigin(0,.5);
+    this.lineFill=this.add.rectangle(12,40,200,10,0x69d6c5,1).setOrigin(0,.5);this.lineText=this.add.text(12,7,`LINE · T${this.lineLevel}`,{fontSize:'14px',fontStyle:'bold',color:'#fff6dc'});this.lineValueText=this.add.text(212,7,'',{fontSize:'14px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(1,0);this.lineHud=this.add.container(24,18,[linePanel,lineTrack,this.lineFill,this.lineText,this.lineValueText]).setDepth(60);
     this.basketText=this.add.text(480,18,'',{fontSize:'18px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#153a4a'}).setPadding(12,8).setOrigin(.5,0).setDepth(60);
     const reelAccent=[0xfff6dc,0xa9e5dc,0x69d6c5,0xffd166][this.reelLevel];
     this.reelBg=this.add.rectangle(860,39,150,48,0xef6b4a).setStrokeStyle(3,reelAccent).setInteractive({useHandCursor:true}).setDepth(60);
@@ -158,7 +163,7 @@ export class PierGameplayScene extends Phaser.Scene {
     this.reelBg.on('pointerdown',()=>this.startRetract());
     const hint=this.location.id==='rocky-cove'?'CURRENT PUSHES RIGHT • KELP BLOCKS THE HOOK':this.location.id==='moonlit-trench'?'KEEP THE HOOK LIGHT CLOSE • DEEP FISH FLEE':'MOVE THE HOOK • STAY ON A FISH • REEL IN ANYTIME';
     this.diveHint=this.add.text(480,505,hint,{fontSize:'16px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#fff6dc'}).setPadding(10,6).setOrigin(.5).setDepth(60);
-    this.spawnTargets(c);this.spawnTreasure(c);if(this.location.id==='moonlit-trench')this.setupMoonlitVisibility(c);c.add([this.lineText,this.basketText,this.reelBg,this.reelTx,this.diveHint]);c.sort('depth');this.refreshHud();this.layoutSafeArea();
+    this.spawnTargets(c);this.spawnTreasure(c);if(this.location.id==='moonlit-trench')this.setupMoonlitVisibility(c);c.add([this.lineHud,this.basketText,this.reelBg,this.reelTx,this.diveHint]);if(this.touchControls&&!save.underwaterControlsSeen)this.showTouchOnboarding(save,c);c.sort('depth');this.refreshHud();this.layoutSafeArea();
     this.time.delayedCall(4500,()=>this.diveHint?.setVisible(false));PortalBridge.submitAnalyticsEvent('underwater_start');
   }
   private drawRockyEnvironment(c:Phaser.GameObjects.Container){
@@ -207,12 +212,41 @@ export class PierGameplayScene extends Phaser.Scene {
     const mask=this.moonlitMaskSource.createGeometryMask();mask.setInvertAlpha(true);this.moonlitShade=this.add.rectangle(480,270,960,540,0x041426,.66).setDepth(45).setMask(mask);this.moonlitGlow=this.add.circle(this.hookPos.x,this.hookPos.y,radius,0x7bd9ff,.07).setStrokeStyle(2,0xa9e5dc,.22).setDepth(44);c.add([this.moonlitGlow,this.moonlitShade]);
   }
   private clearMoonlitVisibility(){this.moonlitShade?.destroy();this.moonlitMaskSource?.destroy();this.moonlitGlow?.destroy();this.moonlitShade=undefined;this.moonlitMaskSource=undefined;this.moonlitGlow=undefined;}
+  private beginTouchSteering(pointer:Phaser.Input.Pointer){
+    if(!this.underwater||(this.joystickPointerId!==undefined&&this.joystickPointerId!==pointer.id))return;
+    this.dismissTouchOnboarding();this.joystickPointerId=pointer.id;const safe=safeAreaInsets(this);
+    this.joystickOrigin.set(Phaser.Math.Clamp(pointer.worldX,58+safe.left,902-safe.right),Phaser.Math.Clamp(pointer.worldY,105+safe.top,475-safe.bottom));
+    if(!this.joystickBase?.active){
+      this.joystickBase=this.add.circle(this.joystickOrigin.x,this.joystickOrigin.y,46,0x153a4a,.38).setStrokeStyle(3,0xfff6dc,.72).setDepth(72);
+      this.joystickKnob=this.add.circle(this.joystickOrigin.x,this.joystickOrigin.y,20,0xfff6dc,.82).setStrokeStyle(2,0x153a4a,.8).setDepth(73);
+      this.underwater.add([this.joystickBase,this.joystickKnob]);this.underwater.sort('depth');
+    }
+    this.joystickBase.setPosition(this.joystickOrigin.x,this.joystickOrigin.y).setVisible(true);this.joystickKnob?.setPosition(this.joystickOrigin.x,this.joystickOrigin.y).setVisible(true);this.updateTouchSteering(pointer);
+  }
+  private updateTouchSteering(pointer:Phaser.Input.Pointer){
+    if(pointer.id!==this.joystickPointerId)return;const point={x:pointer.worldX,y:pointer.worldY},vector=virtualJoystickVector(this.joystickOrigin,point),knob=joystickKnobPosition(this.joystickOrigin,point);
+    this.joystickVector.set(vector.x,vector.y);this.joystickKnob?.setPosition(knob.x,knob.y);
+  }
+  private endTouchSteering(pointer?:Phaser.Input.Pointer){
+    if(pointer&&pointer.id!==this.joystickPointerId)return;this.joystickPointerId=undefined;this.joystickVector.set(0,0);this.joystickBase?.setVisible(false);this.joystickKnob?.setVisible(false);
+  }
+  private showTouchOnboarding(save:ReturnType<typeof SaveService.load>,c:Phaser.GameObjects.Container){
+    save.underwaterControlsSeen=true;SaveService.save(save);
+    const panel=this.add.rectangle(480,282,500,176,0x153a4a,.94).setStrokeStyle(4,0xfff6dc,.9),title=this.add.text(480,226,'DRAG ANYWHERE TO STEER',{fontSize:'22px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(.5);
+    const base=this.add.circle(350,292,39,0xfff6dc,.18).setStrokeStyle(3,0xfff6dc,.7),knob=this.add.circle(350,292,16,0xfff6dc,.86).setStrokeStyle(2,0x153a4a),copy=this.add.text(430,276,'Keep holding the finger.\nStay on a fish to catch it.',{fontSize:'15px',fontStyle:'bold',color:'#a9e5dc',lineSpacing:5}),reel=this.add.text(480,344,'REEL IN WHEN YOU ARE READY TO RETURN',{fontSize:'13px',fontStyle:'bold',color:'#ffd166'}).setOrigin(.5);
+    this.controlOnboarding=this.add.container(0,0,[panel,title,base,knob,copy,reel]).setDepth(96);c.add(this.controlOnboarding);
+    if(!this.reducedMotion)this.tweens.add({targets:knob,x:382,duration:620,yoyo:true,repeat:2,ease:'Sine.inOut'});
+    this.time.delayedCall(4300,()=>this.dismissTouchOnboarding());
+  }
+  private dismissTouchOnboarding(){
+    const onboarding=this.controlOnboarding;if(!onboarding?.active)return;this.controlOnboarding=undefined;this.tweens.add({targets:onboarding,alpha:0,duration:180,onComplete:()=>onboarding.destroy(true)});
+  }
   private updateUnderwater(delta:number){
     if(Phaser.Input.Keyboard.JustDown(this.keys.E)||Phaser.Input.Keyboard.JustDown(this.keys.SPACE)){this.startRetract();return}
     const d=delta/1000,move=new Phaser.Math.Vector2(),before=this.hookPos.clone();
     if(this.keys.A.isDown||this.keys.LEFT.isDown)move.x--;if(this.keys.D.isDown||this.keys.RIGHT.isDown)move.x++;if(this.keys.W.isDown||this.keys.UP.isDown)move.y--;if(this.keys.S.isDown||this.keys.DOWN.isDown)move.y++;
-    const tinySlowdown=1-Math.min(this.caught.length*this.basketDrag,.05),speed=this.hookMoveSpeed*tinySlowdown;
-    if(move.lengthSq()>0)this.hookPos.add(move.normalize().scale(speed*d));else if(this.pointerSteering)this.hookPos.add(this.hookTarget.clone().subtract(this.hookPos).limit(speed*d));
+    const tinySlowdown=1-Math.min(this.caught.length*this.basketDrag,.05),speed=this.hookMoveSpeed*tinySlowdown;if(move.lengthSq()===0&&this.joystickVector.lengthSq()>0)move.copy(this.joystickVector);
+    if(move.lengthSq()>0){const strength=Math.min(1,move.length());this.hookPos.add(move.normalize().scale(speed*d*strength))}else if(this.pointerSteering)this.hookPos.add(this.hookTarget.clone().subtract(this.hookPos).limit(speed*d));
     const current=currentVector(this.location.id,this.hookPos.x,this.hookPos.y,this.time.now);this.hookPos.add(new Phaser.Math.Vector2(current.x,current.y).scale(d));
     this.hookPos.x=Phaser.Math.Clamp(this.hookPos.x,42,918);this.hookPos.y=Phaser.Math.Clamp(this.hookPos.y,82,502);
     if(this.isBlocked(this.hookPos))this.hookPos.copy(before);
@@ -230,11 +264,11 @@ export class PierGameplayScene extends Phaser.Scene {
     let touching:Target|undefined;
     for(const t of this.targets){if(!t.sprite.visible)continue;const distance=Phaser.Math.Distance.Between(t.sprite.x,t.sprite.y,this.hookPos.x,this.hookPos.y),behavior=fishBehavior(t.fish);if((behavior==='skittish'||behavior==='flee')&&distance<105){const away=this.hookPos.x<t.sprite.x?1:-1;if(away!==t.direction){t.direction=away;t.sprite.setFlipX(fishFlipXForDirection(t.direction));}}t.sprite.x+=t.direction*t.speed*(.86+t.fish.difficulty*.07)*movementScale(t.fish,this.time.now,t.phase,distance)*d;if(t.sprite.x<90||t.sprite.x>870){t.direction*=-1;t.sprite.x=Phaser.Math.Clamp(t.sprite.x,90,870);t.sprite.setFlipX(fishFlipXForDirection(t.direction))}t.sprite.y=t.baseY+verticalOffset(t.fish,this.time.now,t.phase);t.aura.setPosition(t.sprite.x,t.sprite.y);t.badge.setPosition(t.sprite.x,t.sprite.y-37);if(Phaser.Math.Distance.Between(t.sprite.x,t.sprite.y,this.hookPos.x,this.hookPos.y)<42)touching=t}
     if(touching&&touching!==this.touchingTarget)AudioService.bite();this.touchingTarget=touching;
-    this.captureArt.clear();
-    for(const t of this.targets){const needed=captureSeconds(t.fish,t.slots);if(t===touching&&this.usedSlots+t.slots<=this.maxSlots){t.lastTouchAt=this.time.now;t.capture+=d;this.captureArt.lineStyle(6,0xffd166,1).beginPath().arc(t.sprite.x,t.sprite.y,36,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(t.capture/needed,1)).strokePath();if(t.capture>=needed)this.catchTarget(t)}else if(this.time.now-t.lastTouchAt>t.fish.hookMs)t.capture=Math.max(0,t.capture-d*captureDecayPerSecond(t.fish))}
+    this.captureArt.clear();this.captureLabel.setVisible(false).setBackgroundColor('#ffd166').setColor('#153a4a');
+    for(const t of this.targets){const needed=captureSeconds(t.fish,t.slots);if(t===touching&&this.usedSlots+t.slots<=this.maxSlots){t.lastTouchAt=this.time.now;t.capture+=d;const progress=Math.min(t.capture/needed,1);this.captureArt.lineStyle(10,0x153a4a,.62).strokeCircle(t.sprite.x,t.sprite.y,42).lineStyle(7,0xffd166,1).beginPath().arc(t.sprite.x,t.sprite.y,42,-Math.PI/2,-Math.PI/2+Math.PI*2*progress).strokePath();this.captureLabel.setText(`CATCH  ${Math.round(progress*100)}%`).setPosition(t.sprite.x,t.sprite.y+52).setVisible(true);if(t.capture>=needed)this.catchTarget(t)}else if(t===touching){this.captureArt.lineStyle(8,0xef6b4a,.9).strokeCircle(t.sprite.x,t.sprite.y,42);this.captureLabel.setText('BASKET FULL').setPosition(t.sprite.x,t.sprite.y+52).setBackgroundColor('#ef6b4a').setColor('#fff6dc').setVisible(true)}else if(this.time.now-t.lastTouchAt>t.fish.hookMs)t.capture=Math.max(0,t.capture-d*captureDecayPerSecond(t.fish))}
   }
   private catchTarget(t:Target){
-    t.sprite.setVisible(false);t.aura.setVisible(false);t.badge.setVisible(false);this.usedSlots+=t.slots;AudioService.catch();const mini=this.add.image(this.hookPos.x-18,this.hookPos.y+20,t.fish.texture).setDisplaySize(42,27).setTint(t.fish.color).setDepth(38);this.underwater!.add(mini);this.underwater!.sort('depth');this.caught.push({fish:t.fish,sprite:mini});this.refreshHud();this.showToast(`${t.fish.name} caught!`);if(this.usedSlots>=this.maxSlots)this.time.delayedCall(500,()=>this.showToast('Basket full — reel in!'));
+    t.sprite.setVisible(false);t.aura.setVisible(false);t.badge.setVisible(false);this.captureLabel.setVisible(false);this.usedSlots+=t.slots;AudioService.catch();const mini=this.add.image(this.hookPos.x-18,this.hookPos.y+20,t.fish.texture).setDisplaySize(42,27).setTint(t.fish.color).setDepth(38);this.underwater!.add(mini);this.underwater!.sort('depth');this.caught.push({fish:t.fish,sprite:mini});this.refreshHud();this.showToast(`${t.fish.name} caught!`);if(this.usedSlots>=this.maxSlots)this.time.delayedCall(500,()=>this.showToast('Basket full — reel in!'));
   }
   private checkTreasure(){
     if(this.treasureFound||!this.treasure||!this.currentTreasureId)return;
@@ -252,8 +286,8 @@ export class PierGameplayScene extends Phaser.Scene {
     this.caught.forEach((c,i)=>{const p=this.pointBehind(26+i*34);c.sprite.setPosition(p.x+Math.sin(this.time.now*.006+i)*3,p.y+8).setRotation(Math.sin(this.time.now*.005+i)*.12)});
   }
   private pointBehind(distance:number){const pts=[...this.trail,this.hookPos];let left=distance;for(let i=pts.length-1;i>0;i--){const len=pts[i].distance(pts[i-1]);if(left<=len)return pts[i].clone().lerp(pts[i-1],left/len);left-=len}return pts[0].clone()}
-  private refreshHud(){if(!this.lineText)return;const meters=this.routeLength()/this.maxLinePx*this.lineMeters;this.lineText.setText(`LINE  ${(this.lineMeters-meters).toFixed(1)} m · T${this.lineLevel}`);this.basketText.setText(`BASKET  ${this.usedSlots} / ${this.maxSlots} · T${this.basketLevel}${this.treasureFound?'   ★':''}`)}
-  private startRetract(){if(this.phase!=='UNDERWATER')return;AudioService.reel();this.phase='RETRACTING';this.pointerSteering=false;this.diveHint?.setVisible(false);if(this.trail[this.trail.length-1].distance(this.hookPos)>1)this.trail.push(this.hookPos.clone());this.retractIndex=this.trail.length-2;this.showToast('Following the line home…')}
+  private refreshHud(){if(!this.lineText)return;const used=Math.min(1,this.routeLength()/this.maxLinePx),remaining=1-used,meters=this.lineMeters*remaining,color=remaining>.45?0x69d6c5:remaining>.2?0xffd166:0xef6b4a;this.lineText.setText(`LINE · T${this.lineLevel}`);this.lineValueText.setText(`${meters.toFixed(1)} m`);this.lineFill.setDisplaySize(Math.max(.5,200*remaining),10).setFillStyle(color).setVisible(remaining>.001);this.basketText.setText(`BASKET  ${this.usedSlots} / ${this.maxSlots} · T${this.basketLevel}${this.treasureFound?'   ★':''}`)}
+  private startRetract(){if(this.phase!=='UNDERWATER')return;AudioService.reel();this.phase='RETRACTING';this.pointerSteering=false;this.endTouchSteering();this.dismissTouchOnboarding();this.diveHint?.setVisible(false);if(this.trail[this.trail.length-1].distance(this.hookPos)>1)this.trail.push(this.hookPos.clone());this.retractIndex=this.trail.length-2;this.showToast('Following the line home…')}
   private updateRetract(delta:number){
     const step=this.reelSpeed*delta/1000;if(this.retractIndex<0){this.hookPos.copy(this.anchor);this.finishDive();return}const target=this.trail[this.retractIndex],v=target.clone().subtract(this.hookPos);if(v.length()<=step){this.hookPos.copy(target);this.trail.length=this.retractIndex+1;this.retractIndex--}else this.hookPos.add(v.setLength(step));this.drawHookAndRope();this.refreshHud();
   }
@@ -518,7 +552,7 @@ export class PierGameplayScene extends Phaser.Scene {
     if(this.help?.active)this.help.setY(500-safe.bottom);
     if(this.locationText?.active)this.locationText.setPosition(22+safe.left,22+safe.top);
     if(this.progressText?.active)this.progressText.setPosition(938-safe.right,22+safe.top);
-    if(this.lineText?.active)this.lineText.setPosition(24+safe.left,18+safe.top);
+    if(this.lineHud?.active)this.lineHud.setPosition(24+safe.left,18+safe.top);
     if(this.basketText?.active)this.basketText.setY(18+safe.top);
     if(this.reelBg?.active)this.reelBg.setPosition(860-safe.right,39+safe.top);
     if(this.reelTx?.active)this.reelTx.setPosition(860-safe.right,39+safe.top);

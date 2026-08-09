@@ -10,10 +10,11 @@ export const BOAT_REPAIR_COSTS=[120,200,280] as const;
 export const BOAT_REPAIR_TOTAL=BOAT_REPAIR_COSTS.reduce((sum,cost)=>sum+cost,0);
 export interface BoatProgress { investedCoins:number; unlocked:boolean }
 export interface SaveData {
-  version:6;
+  version:7;
   coins:number;
   xp:number;
   tutorialComplete:boolean;
+  underwaterControlsSeen:boolean;
   muted:boolean;
   fishStats:Record<string,FishStat>;
   discoveredTreasures:string[];
@@ -46,7 +47,7 @@ const freshLocationProgress=():Record<FishingLocationId,LocationProgress>=>({
 });
 
 const fresh=():SaveData=>({
-  version:6,coins:0,xp:0,tutorialComplete:false,muted:false,fishStats:{},discoveredTreasures:[],
+  version:7,coins:0,xp:0,tutorialComplete:false,underwaterControlsSeen:false,muted:false,fishStats:{},discoveredTreasures:[],
   equipment:{line:0,reel:0,basket:0,bait:0},activeQuests:[],questCycle:0,completedQuestIds:[],achievementIds:[],pendingAchievementIds:[],coolerStickerTier:0,harborStickerCount:0,
   boat:{investedCoins:0,unlocked:false},unlockedLocationIds:['sunny-pier'],completedLocationIds:[],lastLocationId:'sunny-pier',locationProgress:freshLocationProgress(),claimedLevelRewards:[1]
 });
@@ -61,16 +62,16 @@ export class SaveService {
     try{
       const value=JSON.parse(storage.getItem(this.key)??'null');
       if(value?.version===1){const xp=Math.max(0,finite(value.xp)),currentLevel=this.levelProgress(xp).level;return {...fresh(),coins:finite(value.coins),xp,tutorialComplete:!!value.tutorialComplete,muted:!!value.muted,claimedLevelRewards:Array.from({length:currentLevel},(_,index)=>index+1)};}
-      if(value?.version!==2&&value?.version!==3&&value?.version!==4&&value?.version!==5&&value?.version!==6)return fresh();
+      if(value?.version!==2&&value?.version!==3&&value?.version!==4&&value?.version!==5&&value?.version!==6&&value?.version!==7)return fresh();
       const base=fresh();
       const unlockedLocationIds=this.locationIds(value.unlockedLocationIds,true);
       const lastLocationId=this.locationId(value.lastLocationId);
       const xp=Math.max(0,finite(value.xp)),currentLevel=this.levelProgress(xp).level;
-      const claimedLevelRewards=value.version===6&&Array.isArray(value.claimedLevelRewards)
+      const claimedLevelRewards=value.version>=6&&Array.isArray(value.claimedLevelRewards)
         ?[...new Set([1,...value.claimedLevelRewards.filter((level:unknown)=>Number.isInteger(level)&&finite(level)>=2&&finite(level)<=LEVEL_THRESHOLDS.length)])]
         :Array.from({length:currentLevel},(_,index)=>index+1);
       return {
-        ...base,...value,version:6,coins:Math.max(0,finite(value.coins)),xp,
+        ...base,...value,version:7,coins:Math.max(0,finite(value.coins)),xp,underwaterControlsSeen:!!value.underwaterControlsSeen,
         fishStats:value.fishStats&&typeof value.fishStats==='object'?value.fishStats:{},
         discoveredTreasures:Array.isArray(value.discoveredTreasures)?[...new Set(value.discoveredTreasures.filter((x:unknown)=>typeof x==='string'))]:[],
         equipment:{
