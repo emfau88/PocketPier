@@ -2,6 +2,7 @@ import { describe,it,expect } from 'vitest';
 import { FISH, fishFlipXForDirection, pickFish } from '../src/gameplay/Fish';
 import { TripState } from '../src/gameplay/TripState';
 import { captureDecayPerSecond, captureSeconds, fishBehavior, movementScale, verticalOffset } from '../src/gameplay/FishBehavior';
+import { currentVector, obstaclesForLocation, pointHitsObstacle } from '../src/gameplay/UnderwaterEnvironment';
 import { BOAT_REPAIR_COSTS, BOAT_REPAIR_TOTAL, EQUIPMENT_COSTS, LEVEL_REWARDS, LEVEL_THRESHOLDS, SaveService } from '../src/core/SaveService';
 import { QuestService } from '../src/gameplay/QuestService';
 import { selectRenderScale } from '../src/core/RenderQuality';
@@ -20,6 +21,12 @@ describe('core logic',()=>{
     expect(captureDecayPerSecond(hard)).toBeGreaterThan(captureDecayPerSecond(easy));
     expect(movementScale(hard,500,0,50)).toBeGreaterThan(movementScale(easy,500,0,50));
     expect(verticalOffset(eel,300,0)).not.toBe(verticalOffset(easy,300,0));
+  });
+  it('adds current and solid kelp only to Rocky Cove',()=>{
+    expect(currentVector('sunny-pier',400,300,1000)).toEqual({x:0,y:0});
+    expect(currentVector('rocky-cove',400,300,1000).x).toBeGreaterThan(0);
+    const obstacle=obstaclesForLocation('rocky-cove')[0];expect(pointHitsObstacle('rocky-cove',obstacle.x,obstacle.y)).toBe(true);
+    expect(pointHitsObstacle('sunny-pier',obstacle.x,obstacle.y)).toBe(false);
   });
   it('ends after three casts',()=>{const t=new TripState();for(let i=0;i<3;i++)t.useCast();expect(t.complete).toBe(true)});
   it('includes treasure bonuses in trip coins',()=>{const t=new TripState();t.addBonus(25);expect(t.coins).toBe(25)});

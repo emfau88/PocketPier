@@ -101,7 +101,7 @@ Relevante Abnahmegroessen: 821x462, 907x510, 1216x684, 1280x720, 1366x768, 1536x
 
 - [x] `difficulty` und `hookMs` in reales Fischverhalten uebersetzen.
 - [~] Sunny Pier als ruhige Einfuehrung gestalten.
-- [ ] Rocky Cove mit Kelp-Hindernissen und Stroemung ausstatten.
+- [x] Rocky Cove mit Kelp-Hindernissen und Stroemung ausstatten.
 - [ ] Moonlit Trench mit Licht-/Sichtmechanik und anspruchsvolleren Fischen ausstatten.
 - [~] Unterschiedliche Bewegungsmuster implementieren: ruhiges Schwimmen, Scheu, Sprint, Flucht und Aalbewegung sind aktiv; Schwarm-Feinschliff folgt.
 - [ ] Schatz-Spawns auf mehrere Zonen und Wahrscheinlichkeiten umstellen.
@@ -200,3 +200,6 @@ Relevante Abnahmegroessen: 821x462, 907x510, 1216x684, 1280x720, 1366x768, 1536x
 - Tests auf 26 erweitert; Produktions-Build und Browser-QA ohne neue Fehler abgeschlossen.
 - Phase 4 / Slice 1: Fisch-Scheu, Sprints, Flucht und Aalbewegung sowie individuelle Fangdauer und Hook-Grace aus `difficulty` und `hookMs` umgesetzt.
 - Tests auf 27 erweitert; Produktions-Build fuer den ersten Gameplay-Slice erfolgreich.
+- Phase 4 / Slice 2: Rocky-Cove-Strömung, sichtbare Flusspartikel sowie kollidierende Kelp- und Fels-Platzhalter ohne neue Assets umgesetzt.
+- Kelp- und Felsformen nach Browser-Sichtprüfung organischer nachjustiert; finale Grafiken bleiben fuer Phase 5 vorgesehen.
+- Tests auf 28 erweitert; Production-Build und Rocky-Cove-Browser-QA erfolgreich.

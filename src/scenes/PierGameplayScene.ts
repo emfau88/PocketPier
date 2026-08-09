@@ -10,6 +10,7 @@ import { captureDecayPerSecond, captureSeconds, fishBehavior, movementScale, ver
 import type { TreasureId } from '../gameplay/Treasure';
 import { TripState } from '../gameplay/TripState';
 import { FISHING_LOCATIONS, locationById, type FishingLocation, type FishingLocationId } from '../gameplay/FishingLocation';
+import { currentVector, obstaclesForLocation, pointHitsObstacle } from '../gameplay/UnderwaterEnvironment';
 
 type Phase='CAST'|'FLIGHT'|'UNDERWATER'|'RETRACTING'|'RESULT';
 type Target={fish:Fish;sprite:Phaser.GameObjects.Image;aura:Phaser.GameObjects.Arc;badge:Phaser.GameObjects.Text;slots:number;capture:number;direction:number;speed:number;baseY:number;phase:number;lastTouchAt:number};
@@ -145,15 +146,31 @@ export class PierGameplayScene extends Phaser.Scene {
     c.add(this.add.image(480,270,this.location.underwaterTexture).setDisplaySize(960,540));
     for(let i=0;i<13;i++)c.add(this.add.circle(60+i*78,105+(i%3)*38,3+(i%2)*2,0xb9f0e8,.4));
     for(const [x,y,s] of [[80,440,1],[180,475,.8],[720,485,.9],[875,430,.75]] as number[][]){const weed=this.add.graphics();weed.lineStyle(10,0x3f9b83,.9);for(let j=0;j<3;j++)weed.beginPath().moveTo(x+j*13,y+80).lineTo(x-8+j*14,y+25-j*7).strokePath();weed.setScale(s);c.add(weed)}
+    if(this.location.id==='rocky-cove')this.drawRockyEnvironment(c);
     this.rope=this.add.graphics().setDepth(35);this.hookArt=this.add.graphics().setVisible(false);this.captureArt=this.add.graphics().setDepth(39);this.hookSprite=this.add.image(this.hookPos.x,this.hookPos.y,'hook-basic').setDisplaySize(52,66).setDepth(40);c.add([this.rope,this.hookArt,this.captureArt,this.hookSprite]);this.trail=[this.anchor.clone(),this.hookPos.clone()];
     this.lineText=this.add.text(24,18,'',{fontSize:'18px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#153a4a'}).setPadding(12,8).setDepth(60);
     this.basketText=this.add.text(480,18,'',{fontSize:'18px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#153a4a'}).setPadding(12,8).setOrigin(.5,0).setDepth(60);
     this.reelBg=this.add.rectangle(860,39,150,48,0xef6b4a).setStrokeStyle(3,0xfff6dc).setInteractive({useHandCursor:true}).setDepth(60);
     this.reelTx=this.add.text(860,39,'REEL IN',{fontSize:'19px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(.5).setDepth(61);
     this.reelBg.on('pointerdown',()=>this.startRetract());
-    this.diveHint=this.add.text(480,505,'MOVE THE HOOK • STAY ON A FISH • REEL IN ANYTIME',{fontSize:'16px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#fff6dc'}).setPadding(10,6).setOrigin(.5).setDepth(60);
+    const hint=this.location.id==='rocky-cove'?'CURRENT PUSHES RIGHT • KELP BLOCKS THE HOOK':'MOVE THE HOOK • STAY ON A FISH • REEL IN ANYTIME';
+    this.diveHint=this.add.text(480,505,hint,{fontSize:'16px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#fff6dc'}).setPadding(10,6).setOrigin(.5).setDepth(60);
     c.add([this.lineText,this.basketText,this.reelBg,this.reelTx,this.diveHint]);this.spawnTargets(c);this.spawnTreasure(c);this.refreshHud();this.layoutSafeArea();
     this.time.delayedCall(4500,()=>this.diveHint?.setVisible(false));PortalBridge.submitAnalyticsEvent('underwater_start');
+  }
+  private drawRockyEnvironment(c:Phaser.GameObjects.Container){
+    for(const obstacle of obstaclesForLocation('rocky-cove')){
+      const art=this.add.graphics().setDepth(34);
+      if(obstacle.kind==='rock'){
+        const points=[new Phaser.Geom.Point(obstacle.x-obstacle.width/2,obstacle.y+obstacle.height/2),new Phaser.Geom.Point(obstacle.x-obstacle.width*.42,obstacle.y-obstacle.height*.12),new Phaser.Geom.Point(obstacle.x-obstacle.width*.18,obstacle.y-obstacle.height/2),new Phaser.Geom.Point(obstacle.x+obstacle.width*.28,obstacle.y-obstacle.height*.38),new Phaser.Geom.Point(obstacle.x+obstacle.width/2,obstacle.y+obstacle.height*.08),new Phaser.Geom.Point(obstacle.x+obstacle.width*.4,obstacle.y+obstacle.height/2)];
+        art.fillStyle(0x315b5d,.58).fillPoints(points,true).lineStyle(2,0x88aaa0,.55).strokePoints(points,true,true);
+      }else{
+        art.lineStyle(5,0x246f60,.72);
+        for(let index=-1;index<=1;index++){const x=obstacle.x+index*18,lean=index*8;art.beginPath().moveTo(x,obstacle.y+obstacle.height/2).lineTo(x-6,obstacle.y+obstacle.height*.18).lineTo(x+8+lean,obstacle.y-obstacle.height*.18).lineTo(x-3+lean,obstacle.y-obstacle.height/2).strokePath();art.fillStyle(0x4b9a78,.42).fillEllipse(x-10,obstacle.y+15+index*10,22,8).fillEllipse(x+9,obstacle.y-28-index*8,20,7);}
+      }
+      c.add(art);
+    }
+    for(let index=0;index<9;index++){const flow=this.add.ellipse(70+index*105,135+(index%4)*82,24,3,0xa9e5dc,.35).setDepth(25);c.add(flow);if(!this.reducedMotion)this.tweens.add({targets:flow,x:flow.x+150,duration:2400+(index%3)*350,delay:index*120,repeat:-1,ease:'Linear'});}
   }
   private spawnTargets(c:Phaser.GameObjects.Container){
     const fish=this.location.fish;
@@ -175,6 +192,7 @@ export class PierGameplayScene extends Phaser.Scene {
     if(this.keys.A.isDown||this.keys.LEFT.isDown)move.x--;if(this.keys.D.isDown||this.keys.RIGHT.isDown)move.x++;if(this.keys.W.isDown||this.keys.UP.isDown)move.y--;if(this.keys.S.isDown||this.keys.DOWN.isDown)move.y++;
     const tinySlowdown=1-Math.min(this.caught.length*this.basketDrag,.05),speed=this.hookMoveSpeed*tinySlowdown;
     if(move.lengthSq()>0)this.hookPos.add(move.normalize().scale(speed*d));else if(this.pointerSteering)this.hookPos.add(this.hookTarget.clone().subtract(this.hookPos).limit(speed*d));
+    const current=currentVector(this.location.id,this.hookPos.x,this.hookPos.y,this.time.now);this.hookPos.add(new Phaser.Math.Vector2(current.x,current.y).scale(d));
     this.hookPos.x=Phaser.Math.Clamp(this.hookPos.x,42,918);this.hookPos.y=Phaser.Math.Clamp(this.hookPos.y,82,502);
     if(this.isBlocked(this.hookPos))this.hookPos.copy(before);
     const laid=this.routeLength(),step=before.distance(this.hookPos),remaining=this.maxLinePx-laid;if(step>remaining)this.hookPos.copy(before.clone().add(this.hookPos.clone().subtract(before).setLength(Math.max(0,remaining))));
@@ -184,7 +202,7 @@ export class PierGameplayScene extends Phaser.Scene {
   private isBlocked(p:Phaser.Math.Vector2){
     // Sunny Pier starts intentionally open: only the natural map edges and
     // seabed are solid. Decorative plants and distant rocks remain passable.
-    return p.y>478||p.x<82||p.x>878;
+    return p.y>478||p.x<82||p.x>878||pointHitsObstacle(this.location.id,p.x,p.y);
   }
   private routeLength(){let total=0;for(let i=1;i<this.trail.length;i++)total+=this.trail[i-1].distance(this.trail[i]);total+=this.trail[this.trail.length-1].distance(this.hookPos);return total}
   private updateFish(d:number){
