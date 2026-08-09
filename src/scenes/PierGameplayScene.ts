@@ -127,7 +127,7 @@ export class PierGameplayScene extends Phaser.Scene {
     if(this.phase==='CAST')this.cast();else if(this.phase==='RESULT')this.nextDive();
   }
   private cast(){
-    this.castQuality=castQualityFromMarker(this.marker);this.trip.useCast();this.phase='FLIGHT';this.hideCastMeter();AudioService.cast();this.help.setText('CASTING…');if(this.castQuality>=.88)this.showToast('PERFECT CAST!');else if(this.castQuality>=.58)this.showToast('GOOD CAST');
+    this.castQuality=castQualityFromMarker(this.marker);this.trip.useCast();this.phase='FLIGHT';this.hideCastMeter();AudioService.cast();this.help.setText('CASTING…');if(this.castQuality>=.88){this.showToast('PERFECT CAST!');this.showPerfectCastFx()}else if(this.castQuality>=.58)this.showToast('GOOD CAST');
     this.bobber.setDisplaySize(52,54);const bobberScaleX=this.bobber.scaleX,bobberScaleY=this.bobber.scaleY;
     this.bobber.setVisible(true).setPosition(555,278).setScale(bobberScaleX*.5,bobberScaleY*.5);
     this.tweens.add({targets:this.bobber,x:760,y:430,scaleX:bobberScaleX,scaleY:bobberScaleY,duration:500,ease:'Quad.easeOut',onComplete:()=>{
@@ -277,6 +277,11 @@ export class PierGameplayScene extends Phaser.Scene {
     const fx=this.add.image(x,y,'splash').setDisplaySize(48,48).setDepth(30);
     const targetX=fx.scaleX,targetY=fx.scaleY;fx.setScale(targetX*.34,targetY*.34);
     this.tweens.add({targets:fx,scaleX:targetX,scaleY:targetY,alpha:{from:.88,to:0},y:y-8,duration:300,ease:'Quad.easeOut',onComplete:()=>fx.destroy()});
+  }
+  private showPerfectCastFx(){
+    const fx=this.add.image(480,215,'fx-perfect-hook').setDisplaySize(112,112).setDepth(145),scaleX=fx.scaleX,scaleY=fx.scaleY;fx.setScale(scaleX*.45,scaleY*.45).setAlpha(.95);AudioService.perfect();
+    this.tweens.add({targets:fx,scaleX,scaleY,y:190,duration:this.reducedMotion?220:420,ease:'Back.easeOut'});
+    this.tweens.add({targets:fx,alpha:0,delay:this.reducedMotion?180:420,duration:260,onComplete:()=>fx.destroy()});
   }
   private waterRing(x:number,y:number,alpha=1){
     const ring=this.add.ellipse(x,y,28,9).setStrokeStyle(2,0xfff6dc,.8*alpha).setFillStyle(0xffffff,0).setDepth(29);

@@ -36,6 +36,7 @@ ASSETS: dict[str, tuple[int, int] | None] = {
     "hub_boat_side_states.png": None,
     "hook_basic.png": (192, 192),
     "fx_water_splash.png": (192, 192),
+    "fx_perfect_hook.png": (256, 256),
     "ui_fishing_spots_map.png": None,
     "ui_spot_sunny.png": (256, 256),
     "ui_spot_rocky.png": (256, 256),

@@ -111,11 +111,15 @@ Ergebnis Phase 4: Alle drei Angelgebiete besitzen nun eine eigene spielmechanisc
 
 ### Phase 5 - Content- und Asset-Produktion
 
-- [~] Menue, Pier und alle drei Unterwasserwelten auf konsistente Full-HD-Qualitaet bringen; Fisch-Art-Pass abgeschlossen, Umwelt-Layer folgen.
+- [x] Menue, Pier und alle drei Unterwasserwelten auf konsistente Full-HD-Qualitaet bringen.
 - [x] Eigene Fischgrafiken fuer Stripe Perch, Bluegill, Copper Carp und Glass Trout erstellen.
 - [x] Unterwasser-Vordergrund-, Partikel- und Tiefenlayer je Gebiet erstellen.
 - [x] Sichtbare Upgrade-Zustaende fuer Leine, Rolle, Koeder und Korb integrieren.
-- [ ] Vorhandene Catch-Card-, Reel-, Cast- und Perfect-Hook-Assets vor Neuproduktion pruefen.
+- [x] Vorhandene Catch-Card-, Reel-, Cast- und Perfect-Hook-Assets vor Neuproduktion pruefen.
+
+Asset-Audit: `fx_perfect_hook` wird als Perfect-Cast-Belohnung integriert. `ui_catch_card` bleibt fuer eine spaetere Einzel-/Rare-Fanginszenierung reserviert, da der aktuelle Dive mehrere Fische zeigen kann. `ui_reel_panel` ist fuer das mobile HUD zu detailreich; `ui_cast_meter` widerspricht mit seinem festen roten Zielbereich der barriereaermeren gruenen Timing-Anzeige. Fuer diese drei Faelle wird vorerst kein Ersatzasset produziert.
+
+Ergebnis Phase 5: Die drei Gebiete besitzen nun eigenstaendige Fischgrafiken und Vordergrund-Silhouetten mit gebietsbezogenen Partikeln und Tiefenbewegung. Menue, Pier und Unterwasserwelten nutzen gemeinsam die in Milestone A eingefuehrte dynamische Renderaufloesung und responsive Safe-Area-Skalierung. Ausruestungsstufen sind waehrend des Spiels ablesbar; das wiederverwendbare Perfect-Hook-Asset schliesst den visuellen Feedback-Pass ohne unnoetige neue Grafiken ab. Build, 30 Regressionstests sowie Desktop- und Mobile-Layout-QA sind erfolgreich.
 
 ### Phase 6 - Langzeitinhalte
 
@@ -214,3 +218,5 @@ Ergebnis Phase 4: Alle drei Angelgebiete besitzen nun eine eigene spielmechanisc
 - Die drei neuen Runtime-Layer benoetigen zusammen rund 320 KB; Browser-QA aller Gebiete inklusive Moonlit-Licht und HUD ohne Fehler abgeschlossen.
 - Phase 5 / Asset-Slice 3: Leinenstaerke und -farbe, Reel-, Basket- und Bait-Zustaende im Unterwasser-HUD sichtbar gemacht; Tier-Rahmen im Tackle-Menue ergaenzt.
 - Veraltete Preisanzeige im Tackle-Menue auf die tatsaechlichen Balance-Kosten 100 / 180 / 300 korrigiert.
+- Phase 5 / Asset-Slice 4: Vorhandene Catch-, Reel-, Cast- und Perfect-Hook-Grafiken bewertet; Perfect-Hook als animiertes Perfect-Cast-Feedback integriert.
+- Phase 5 abgeschlossen: Full-HD-/Responsive-Qualitaet, neue Fische, Gebiets-Layer, sichtbare Ausruestungsstufen und Asset-Audit verifiziert.

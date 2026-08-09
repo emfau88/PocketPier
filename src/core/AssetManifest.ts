@@ -31,6 +31,7 @@ export const PIER_ASSETS:GameAsset[]=[
   image('hub-boat-states',new URL('../assets/runtime/hub_boat_side_states.webp',import.meta.url)),
   image('hook-basic',new URL('../assets/runtime/hook_basic.webp',import.meta.url)),
   image('splash',new URL('../assets/runtime/fx_water_splash.webp',import.meta.url)),
+  image('fx-perfect-hook',new URL('../assets/runtime/fx_perfect_hook.webp',import.meta.url)),
   image('ui-fishing-spots-map',new URL('../assets/runtime/ui_fishing_spots_map.webp',import.meta.url)),
   image('ui-spot-sunny',new URL('../assets/runtime/ui_spot_sunny.webp',import.meta.url)),
   image('ui-spot-rocky',new URL('../assets/runtime/ui_spot_rocky.webp',import.meta.url)),
