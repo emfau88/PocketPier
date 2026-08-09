@@ -114,7 +114,7 @@ Ergebnis Phase 4: Alle drei Angelgebiete besitzen nun eine eigene spielmechanisc
 - [~] Menue, Pier und alle drei Unterwasserwelten auf konsistente Full-HD-Qualitaet bringen; Fisch-Art-Pass abgeschlossen, Umwelt-Layer folgen.
 - [x] Eigene Fischgrafiken fuer Stripe Perch, Bluegill, Copper Carp und Glass Trout erstellen.
 - [x] Unterwasser-Vordergrund-, Partikel- und Tiefenlayer je Gebiet erstellen.
-- [ ] Sichtbare Upgrade-Zustaende fuer Leine, Rolle, Koeder und Korb integrieren.
+- [x] Sichtbare Upgrade-Zustaende fuer Leine, Rolle, Koeder und Korb integrieren.
 - [ ] Vorhandene Catch-Card-, Reel-, Cast- und Perfect-Hook-Assets vor Neuproduktion pruefen.
 
 ### Phase 6 - Langzeitinhalte
@@ -212,3 +212,5 @@ Ergebnis Phase 4: Alle drei Angelgebiete besitzen nun eine eigene spielmechanisc
 - Alle sechs Sunny-Pier-Fische besitzen nun eine eigene Runtime-Textur; Tests auf 30 erweitert und Desktop-Browser-QA ohne Assetfehler abgeschlossen.
 - Phase 5 / Asset-Slice 2: Eigene freigestellte Vordergrundlayer sowie gebietsbezogene Partikelbewegungen fuer Sunny Pier, Rocky Cove und Moonlit Trench integriert.
 - Die drei neuen Runtime-Layer benoetigen zusammen rund 320 KB; Browser-QA aller Gebiete inklusive Moonlit-Licht und HUD ohne Fehler abgeschlossen.
+- Phase 5 / Asset-Slice 3: Leinenstaerke und -farbe, Reel-, Basket- und Bait-Zustaende im Unterwasser-HUD sichtbar gemacht; Tier-Rahmen im Tackle-Menue ergaenzt.
+- Veraltete Preisanzeige im Tackle-Menue auf die tatsaechlichen Balance-Kosten 100 / 180 / 300 korrigiert.
