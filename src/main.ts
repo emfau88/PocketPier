@@ -10,7 +10,7 @@ new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
   backgroundColor: '#77cbd1',
-  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, width: RENDER_WIDTH, height: RENDER_HEIGHT },
+  scale: { mode: Phaser.Scale.ENVELOP, autoCenter: Phaser.Scale.CENTER_BOTH, width: RENDER_WIDTH, height: RENDER_HEIGHT },
   input: { activePointers: 3 },
   scene: [BootScene, MainMenuScene, LoadingScene, PierGameplayScene, TripSummaryScene],
   render: { antialias: true, pixelArt: false }

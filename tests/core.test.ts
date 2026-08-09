@@ -5,7 +5,7 @@ import { captureDecayPerSecond, captureSeconds, fishBehavior, movementScale, ver
 import { castQualityFromMarker, currentVector, obstaclesForLocation, pointHitsObstacle, treasureChance, treasureSpawnPoint } from '../src/gameplay/UnderwaterEnvironment';
 import { BOAT_REPAIR_COSTS, BOAT_REPAIR_TOTAL, EQUIPMENT_COSTS, LEVEL_REWARDS, LEVEL_THRESHOLDS, SaveService } from '../src/core/SaveService';
 import { QuestService } from '../src/gameplay/QuestService';
-import { selectRenderScale } from '../src/core/RenderQuality';
+import { contentCropInsets, selectRenderScale } from '../src/core/RenderQuality';
 import { LOCATION_ASSETS, MENU_ASSETS, PIER_ASSETS } from '../src/core/AssetManifest';
 
 describe('core logic',()=>{
@@ -45,6 +45,17 @@ describe('core logic',()=>{
     expect(selectRenderScale(1366,768,1,false)).toBe(1.5);
     expect(selectRenderScale(844,390,3,true)).toBe(1.5);
     expect(selectRenderScale(667,375,1,true)).toBe(1);
+  });
+
+  it('keeps HUD content inside a cover-scaled mobile landscape viewport',()=>{
+    expect(contentCropInsets(
+      {left:0,top:-42,right:844,bottom:432},
+      {left:0,top:0,right:844,bottom:390}
+    )).toEqual({top:42,right:0,bottom:42,left:0});
+    expect(contentCropInsets(
+      {left:-80,top:0,right:1040,bottom:540},
+      {left:0,top:0,right:960,bottom:540}
+    )).toEqual({top:0,right:80,bottom:0,left:80});
   });
 
   it('migrates v1 progress without losing coins or xp',()=>{

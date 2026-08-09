@@ -30,6 +30,7 @@ export class PierGameplayScene extends Phaser.Scene {
   private trail:Phaser.Math.Vector2[]=[]; private retractIndex=0;
   private keys!:Record<string,Phaser.Input.Keyboard.Key>;
   private reducedMotion=false;
+  private safeTop=0;
   private surfaceClouds:{sprite:Phaser.GameObjects.Image;speed:number}[]=[];
   private cooler!:Phaser.GameObjects.Image;private tacklebox!:Phaser.GameObjects.Image;private boatSprite!:Phaser.GameObjects.Image;private boatZone!:Phaser.GameObjects.Zone;private noticeBoard!:Phaser.GameObjects.Zone;private spotsZone?:Phaser.GameObjects.Zone;private collectionModal?:Phaser.GameObjects.Container;private tackleModal?:Phaser.GameObjects.Container;private jobsModal?:Phaser.GameObjects.Container;private boatModal?:Phaser.GameObjects.Container;private spotsModal?:Phaser.GameObjects.Container;private modalOpen=false;
   private touchingTarget?:Target;
@@ -511,6 +512,7 @@ export class PierGameplayScene extends Phaser.Scene {
   private showToast(message:string){const tx=this.add.text(480,105,message,{fontSize:'18px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#fff6dc'}).setPadding(12,7).setOrigin(.5).setDepth(90);this.tweens.add({targets:tx,y:85,alpha:0,delay:850,duration:350,onComplete:()=>tx.destroy()})}
   private layoutSafeArea(){
     const safe=safeAreaInsets(this);
+    this.safeTop=safe.top;
     if(this.title?.active)this.title.setY(28+safe.top);
     if(this.castHint?.active)this.castHint.setY(92+safe.top);
     if(this.help?.active)this.help.setY(500-safe.bottom);
@@ -521,11 +523,13 @@ export class PierGameplayScene extends Phaser.Scene {
     if(this.reelBg?.active)this.reelBg.setPosition(860-safe.right,39+safe.top);
     if(this.reelTx?.active)this.reelTx.setPosition(860-safe.right,39+safe.top);
     if(this.diveHint?.active)this.diveHint.setY(505-safe.bottom);
+    if(this.phase==='CAST')this.drawCastMeter();
   }
   private clearOverlay(){this.overlay?.destroy(true);this.overlay=undefined}
   private hideCastMeter(){(this.children.getByName('cast-meter') as Phaser.GameObjects.Image|undefined)?.setVisible(false);this.meter.clear();this.castHint.setVisible(false)}
   private drawCastMeter(){
-    this.meter.clear().fillStyle(0x153a4a,.86).fillRoundedRect(350,67,260,15,7).fillStyle(0x55a86f,.95).fillRoundedRect(455,67,50,15,6).lineStyle(3,0xfff6dc,1).beginPath().moveTo(350+this.marker*260,63).lineTo(350+this.marker*260,86).strokePath();
+    const y=67+this.safeTop;
+    this.meter.clear().fillStyle(0x153a4a,.86).fillRoundedRect(350,y,260,15,7).fillStyle(0x55a86f,.95).fillRoundedRect(455,y,50,15,6).lineStyle(3,0xfff6dc,1).beginPath().moveTo(350+this.marker*260,y-4).lineTo(350+this.marker*260,y+19).strokePath();
   }
   update(_:number,delta:number){
     if(!this.reducedMotion&&this.surface.visible){

@@ -4,6 +4,7 @@ import { GAME_HEIGHT, GAME_WIDTH } from './GameConfig';
 export type RenderScale=1|1.5|2;
 export interface RenderMetrics { scale:RenderScale;width:number;height:number }
 export interface SafeAreaInsets { top:number;right:number;bottom:number;left:number }
+export interface ViewportRect { left:number;top:number;right:number;bottom:number }
 
 export function selectRenderScale(viewportWidth:number,viewportHeight:number,devicePixelRatio:number,coarsePointer:boolean):RenderScale{
   const fitScale=Math.min(viewportWidth/GAME_WIDTH,viewportHeight/GAME_HEIGHT);
@@ -28,14 +29,29 @@ export const RENDER_SCALE=initial.scale;
 export const RENDER_WIDTH=initial.width;
 export const RENDER_HEIGHT=initial.height;
 
+export function contentCropInsets(canvas:ViewportRect,viewport:ViewportRect):SafeAreaInsets{
+  return {
+    top:Math.max(0,viewport.top-canvas.top),
+    right:Math.max(0,canvas.right-viewport.right),
+    bottom:Math.max(0,canvas.bottom-viewport.bottom),
+    left:Math.max(0,viewport.left-canvas.left)
+  };
+}
+
 export function safeAreaInsets(scene:Phaser.Scene):SafeAreaInsets{
   if(typeof window==='undefined')return {top:0,right:0,bottom:0,left:0};
   const style=getComputedStyle(document.documentElement),rect=scene.game.canvas.getBoundingClientRect();
   const xScale=rect.width>0?GAME_WIDTH/rect.width:1,yScale=rect.height>0?GAME_HEIGHT/rect.height:1;
+  const visual=window.visualViewport,viewport={
+    left:visual?.offsetLeft??0,top:visual?.offsetTop??0,
+    right:(visual?.offsetLeft??0)+(visual?.width??window.innerWidth),
+    bottom:(visual?.offsetTop??0)+(visual?.height??window.innerHeight)
+  };
+  const crop=contentCropInsets(rect,viewport);
   const px=(name:string)=>Math.max(0,Number.parseFloat(style.getPropertyValue(name))||0);
   return {
-    top:px('--safe-area-top')*yScale,right:px('--safe-area-right')*xScale,
-    bottom:px('--safe-area-bottom')*yScale,left:px('--safe-area-left')*xScale
+    top:(crop.top+px('--safe-area-top'))*yScale,right:(crop.right+px('--safe-area-right'))*xScale,
+    bottom:(crop.bottom+px('--safe-area-bottom'))*yScale,left:(crop.left+px('--safe-area-left'))*xScale
   };
 }
 

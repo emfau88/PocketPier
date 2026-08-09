@@ -28,7 +28,7 @@ export class TripSummaryScene extends Phaser.Scene {
     SaveService.save(save);
     const progress=SaveService.levelProgress(save.xp),levelUp=progress.level>previousLevel;
 
-    this.add.text(480,55,`${location.name.toUpperCase()} TRIP SUMMARY`,{fontSize:'34px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(.5);
+    this.add.text(480,55+safe.top*.45,`${location.name.toUpperCase()} TRIP SUMMARY`,{fontSize:'34px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(.5);
     this.add.text(480,105,`${this.trip.catches.length} fish from ${TRIP_CASTS} dives   •   +${this.trip.coins} coins   •   +${this.trip.xp} XP`,{fontSize:'20px',color:'#ffd166'}).setOrigin(.5);
     if(unlockedLocation){const unlock=this.add.text(480,145,`NEW AREA UNLOCKED: ${unlockedLocation.name.toUpperCase()}`,{fontSize:'17px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#ffd166'}).setPadding(14,7).setOrigin(.5).setScale(.4);this.tweens.add({targets:unlock,scale:1,duration:420,ease:'Back.easeOut'});}
     else this.add.text(480,145,mastery.complete?'AREA MASTERY COMPLETE':`MASTERY  TRIPS ${mastery.progress.trips}/${mastery.requirement.trips}   FISH ${mastery.progress.catches}/${mastery.requirement.catches}   SPECIES ${mastery.progress.uniqueFish}/${mastery.requirement.uniqueFish}   TREASURES ${mastery.progress.treasures}/${mastery.requirement.treasures}`,{fontSize:'13px',fontStyle:'bold',color:mastery.complete?'#ffd166':'#a9e5dc'}).setOrigin(.5);
