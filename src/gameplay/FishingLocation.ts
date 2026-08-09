@@ -2,6 +2,7 @@ import { FISH, type Fish } from './Fish';
 import { TREASURES, type Treasure } from './Treasure';
 
 export type FishingLocationId='sunny-pier'|'rocky-cove'|'moonlit-trench';
+export interface MasteryRequirement { trips:number;catches:number;uniqueFish:number;treasures:number }
 export interface FishingLocation {
   id:FishingLocationId;
   name:string;
@@ -11,6 +12,7 @@ export interface FishingLocation {
   underwaterTexture:string;
   fish:Fish[];
   treasures:Treasure[];
+  mastery:MasteryRequirement;
   unlockAfter?:FishingLocationId;
 }
 
@@ -39,9 +41,9 @@ const MOONLIT_TRENCH_TREASURES:Treasure[]=[
 ];
 
 export const FISHING_LOCATIONS:FishingLocation[]=[
-  {id:'sunny-pier',name:'Sunny Pier',level:1,subtitle:'The familiar shallows',description:'Bright water, friendly fish, and secrets close to home.',underwaterTexture:'bg-underwater',fish:FISH,treasures:TREASURES},
-  {id:'rocky-cove',name:'Rocky Cove',level:2,subtitle:'Kelp, currents, and old brass',description:'A lively cove hidden behind weathered sea cliffs.',underwaterTexture:'bg-underwater-rocky',fish:ROCKY_COVE_FISH,treasures:ROCKY_COVE_TREASURES,unlockAfter:'sunny-pier'},
-  {id:'moonlit-trench',name:'Moonlit Trench',level:3,subtitle:'A gentle glow in the deep',description:'Bioluminescent life and forgotten relics below the moon.',underwaterTexture:'bg-underwater-moonlit',fish:MOONLIT_TRENCH_FISH,treasures:MOONLIT_TRENCH_TREASURES,unlockAfter:'rocky-cove'}
+  {id:'sunny-pier',name:'Sunny Pier',level:1,subtitle:'The familiar shallows',description:'Bright water, friendly fish, and secrets close to home.',underwaterTexture:'bg-underwater',fish:FISH,treasures:TREASURES,mastery:{trips:2,catches:5,uniqueFish:3,treasures:1}},
+  {id:'rocky-cove',name:'Rocky Cove',level:2,subtitle:'Kelp, currents, and old brass',description:'A lively cove hidden behind weathered sea cliffs.',underwaterTexture:'bg-underwater-rocky',fish:ROCKY_COVE_FISH,treasures:ROCKY_COVE_TREASURES,mastery:{trips:3,catches:7,uniqueFish:2,treasures:1},unlockAfter:'sunny-pier'},
+  {id:'moonlit-trench',name:'Moonlit Trench',level:3,subtitle:'A gentle glow in the deep',description:'Bioluminescent life and forgotten relics below the moon.',underwaterTexture:'bg-underwater-moonlit',fish:MOONLIT_TRENCH_FISH,treasures:MOONLIT_TRENCH_TREASURES,mastery:{trips:3,catches:8,uniqueFish:3,treasures:2},unlockAfter:'rocky-cove'}
 ];
 
 export function locationById(id:FishingLocationId='sunny-pier'){return FISHING_LOCATIONS.find(location=>location.id===id)??FISHING_LOCATIONS[0]}

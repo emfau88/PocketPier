@@ -20,17 +20,19 @@ export class TripSummaryScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(COLORS.navy);
     const safe=safeAreaInsets(this);
     const save=SaveService.load(),startingCoins=save.coins,startingXp=save.xp,previousLevel=SaveService.levelProgress(save.xp).level;
-    save.coins+=this.trip.coins;save.xp+=this.trip.xp;save.tutorialComplete=true;
+    save.coins+=this.trip.coins;const levelRewards=SaveService.awardXp(save,this.trip.xp);save.tutorialComplete=true;
     this.trip.catches.forEach(c=>SaveService.recordCatch(save,c.fish.id,c.weight));
     this.trip.treasures.forEach(t=>SaveService.discoverTreasure(save,t.id));
     const completedJobs=QuestService.applyTrip(save,this.trip),newAchievements=QuestService.discoverAchievements(save);
-    const unlockedLocationId=SaveService.completeLocation(save,this.trip.locationId),location=locationById(this.trip.locationId),unlockedLocation=unlockedLocationId?locationById(unlockedLocationId):undefined;
+    const unlockedLocationIds=SaveService.recordTripProgress(save,this.trip.locationId,this.trip.catches.length,this.trip.treasures.length),location=locationById(this.trip.locationId),unlockedLocation=unlockedLocationIds[0]?locationById(unlockedLocationIds[0]):undefined,mastery=SaveService.masteryStatus(save,this.trip.locationId);
     SaveService.save(save);
     const progress=SaveService.levelProgress(save.xp),levelUp=progress.level>previousLevel;
 
-    this.add.text(480,55,`${location.name.toUpperCase()} COMPLETE`,{fontSize:'36px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(.5);
+    this.add.text(480,55,`${location.name.toUpperCase()} TRIP SUMMARY`,{fontSize:'34px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(.5);
     this.add.text(480,105,`${this.trip.catches.length} fish from ${TRIP_CASTS} dives   •   +${this.trip.coins} coins   •   +${this.trip.xp} XP`,{fontSize:'20px',color:'#ffd166'}).setOrigin(.5);
     if(unlockedLocation){const unlock=this.add.text(480,145,`NEW AREA UNLOCKED: ${unlockedLocation.name.toUpperCase()}`,{fontSize:'17px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#ffd166'}).setPadding(14,7).setOrigin(.5).setScale(.4);this.tweens.add({targets:unlock,scale:1,duration:420,ease:'Back.easeOut'});}
+    else this.add.text(480,145,mastery.complete?'AREA MASTERY COMPLETE':`MASTERY  TRIPS ${mastery.progress.trips}/${mastery.requirement.trips}   FISH ${mastery.progress.catches}/${mastery.requirement.catches}   SPECIES ${mastery.progress.uniqueFish}/${mastery.requirement.uniqueFish}   TREASURES ${mastery.progress.treasures}/${mastery.requirement.treasures}`,{fontSize:'13px',fontStyle:'bold',color:mastery.complete?'#ffd166':'#a9e5dc'}).setOrigin(.5);
+    if(levelRewards.length)this.add.text(480,470,`LEVEL REWARD  +${levelRewards.reduce((sum,reward)=>sum+reward.coins,0)} COINS`,{fontSize:'13px',fontStyle:'bold',color:'#ffd166'}).setOrigin(.5);
     const progressHud=this.add.text(938-safe.right,22+safe.top,`LEVEL ${previousLevel}   XP ${startingXp}   COINS ${startingCoins}`,{fontSize:'16px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(1,0).setDepth(100);
 
     const catchRows=[...this.trip.catches.reduce((rows,c)=>{

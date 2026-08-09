@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "balance:sim": "python scripts/simulate_economy.py"
   },
   "dependencies": { "phaser": "^3.90.0" },
   "devDependencies": {

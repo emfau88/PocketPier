@@ -1,4 +1,4 @@
-import type { ActiveQuest, SaveData } from '../core/SaveService';
+import { SaveService, type ActiveQuest, type SaveData } from '../core/SaveService';
 import { FISH } from './Fish';
 import type { TripState } from './TripState';
 
@@ -50,10 +50,10 @@ export class QuestService {
   static claimQuest(save:SaveData,id:string):QuestReward|undefined{
     const index=save.activeQuests.findIndex(active=>active.id===id);if(index<0)return;
     const active=save.activeQuests[index],definition=questById(active.id);if(!definition||active.progress<definition.target)return;
-    save.coins+=definition.coins;save.xp+=definition.xp;save.completedQuestIds.push(definition.id);
+    save.coins+=definition.coins;const levelBonus=SaveService.awardXp(save,definition.xp).reduce((sum,reward)=>sum+reward.coins,0);save.completedQuestIds.push(definition.id);
     const sticker=!!definition.sticker&&save.harborStickerCount<3;if(sticker)save.harborStickerCount++;
     save.activeQuests[index]=freshQuest(save.questCycle++);
-    return {title:definition.title,coins:definition.coins,xp:definition.xp,sticker};
+    return {title:definition.title,coins:definition.coins+levelBonus,xp:definition.xp,sticker};
   }
 
   static discoverAchievements(save:SaveData):Achievement[]{
@@ -71,7 +71,7 @@ export class QuestService {
     const achievement=ACHIEVEMENTS.find(candidate=>candidate.id===id);if(!achievement)return;
     save.pendingAchievementIds=save.pendingAchievementIds.filter(candidate=>candidate!==id);
     if(!save.achievementIds.includes(id))save.achievementIds.push(id);
-    save.coins+=achievement.coins;save.xp+=achievement.xp;return achievement;
+    save.coins+=achievement.coins;const levelBonus=SaveService.awardXp(save,achievement.xp).reduce((sum,reward)=>sum+reward.coins,0);return {...achievement,coins:achievement.coins+levelBonus};
   }
 
   private static tripProgress(id:string,trip:TripState){

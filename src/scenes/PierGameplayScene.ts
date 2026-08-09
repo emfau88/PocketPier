@@ -276,7 +276,7 @@ export class PierGameplayScene extends Phaser.Scene {
       const emblem=this.add.image(x,215,this.spotBadgeTexture(location.id)).setDisplaySize(112,112).setTint(unlocked?0xffffff:0x71858b).setAlpha(unlocked?1:.52);
       const name=this.add.text(x,285,unlocked?location.name.toUpperCase():'LOCKED',{fontSize:'20px',fontStyle:'bold',color:'#153a4a',align:'center',wordWrap:{width:210}}).setOrigin(.5);
       const description=this.add.text(x,337,compact?location.subtitle:location.description,{fontSize:compact?'14px':'12px',fontStyle:'bold',color:'#4b6973',align:'center',wordWrap:{width:195}}).setOrigin(.5);
-      const status=current?'CURRENT SPOT':unlocked?(completed?'FISH HERE AGAIN':'FISH HERE'):`Complete Area ${location.level-1}`;
+      const status=current?'CURRENT SPOT':unlocked?(completed?'FISH HERE AGAIN':'FISH HERE'):location.id==='rocky-cove'?'BOAT + AREA 1 MASTERY':'AREA 2 MASTERY';
       const action=this.add.text(x,435,status,{fontSize:compact?'14px':'12px',fontStyle:'bold',color:'#fff6dc',backgroundColor:current?'#153a4a':unlocked?'#ef6b4a':'#71858b',align:'center'}).setPadding(compact?14:11,compact?9:7).setOrigin(.5);
       if(unlocked){card.setInteractive({useHandCursor:true});action.setInteractive({useHandCursor:true});const choose=()=>this.chooseFishingSpot(location.id);card.on('pointerdown',choose);action.on('pointerdown',choose);}
       items.push(card,area,emblem,name,description,action);
@@ -427,21 +427,21 @@ export class PierGameplayScene extends Phaser.Scene {
   private applyBoatFrame(save=SaveService.load()){this.boatSprite.setFrame(this.boatFrame(save)).setOrigin(.5,this.boatOriginY(save))}
   private openBoatRepair(){
     this.modalOpen=true;this.pointerSteering=false;this.help.setVisible(false);this.boatModal?.destroy(true);
-    const save=SaveService.load(),stage=SaveService.boatStage(save),nextCost=SaveService.nextBoatRepairCost(save),level=SaveService.levelProgress(save.xp).level,items:Phaser.GameObjects.GameObject[]=[],compact=compactViewport(this);
+    const save=SaveService.load(),stage=SaveService.boatStage(save),nextCost=SaveService.nextBoatRepairCost(save),items:Phaser.GameObjects.GameObject[]=[],compact=compactViewport(this);
     const shade=this.add.rectangle(480,270,960,540,0x102f3d,.78).setInteractive(),paper=this.add.rectangle(480,280,850,470,0xfff6dc,.99).setStrokeStyle(8,COLORS.navy);
     const title=this.add.text(95,62,'THE QUESTIONABLY SEAWORTHY BOAT',{fontSize:'27px',fontStyle:'bold',color:'#153a4a'}),subtitle=this.add.text(95,97,stage===3?'IT FLOATS. THE HARBOR MASTER IS STUNNED.':'TECHNICAL STATUS: FLOATS. MOSTLY.',{fontSize:'13px',fontStyle:'bold',color:'#4b6973'});
     const close=this.add.text(866,65,'X',{fontSize:compact?'26px':'24px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(compact?16:12,compact?10:7).setOrigin(.5).setInteractive({useHandCursor:true});close.on('pointerdown',()=>this.closeBoatRepair());
     const art=this.add.image(270,285,'hub-boat-states',this.boatFrame(save)).setDisplaySize(330,330),stageNames=['HULL PATCHED','MOTOR PERSUADED','MÖWE EVICTED'];
     items.push(shade,paper,title,subtitle,close,art);
     stageNames.forEach((name,index)=>{const done=index<stage,y=180+index*78,card=this.add.rectangle(630,y,330,58,done?0xd9eedc:0xe8f5e9,.98).setStrokeStyle(3,done?COLORS.green:COLORS.navy),mark=this.add.text(490,y,done?'✓':String(index+1),{fontSize:'18px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5),label=this.add.text(525,y-10,name,{fontSize:'15px',fontStyle:'bold',color:'#153a4a'}),cost=this.add.text(525,y+12,done?'COMPLETE':`${BOAT_REPAIR_COSTS[index]} COINS`,{fontSize:'12px',fontStyle:'bold',color:done?'#55a86f':'#ef6b4a'});items.push(card,mark,label,cost);});
-    const routeReady=stage===3&&level>=3,status=stage<3?`REPAIR ${stage+1} OF 3` : routeReady?'ROCKY COVE ROUTE READY':'BOAT READY • REACH LEVEL 3',statusText=this.add.text(630,425,status,{fontSize:'15px',fontStyle:'bold',color:routeReady?'#55a86f':'#153a4a'}).setOrigin(.5);
-    items.push(statusText,this.add.text(270,455,`INVESTED  ${save.boat.investedCoins} / 1000 COINS`,{fontSize:'14px',fontStyle:'bold',color:'#4b6973'}).setOrigin(.5));
+    const routeReady=SaveService.isLocationUnlocked(save,'rocky-cove'),status=stage<3?`REPAIR ${stage+1} OF 3` : routeReady?'ROCKY COVE ROUTE READY':'BOAT READY • FINISH SUNNY PIER MASTERY',statusText=this.add.text(630,425,status,{fontSize:'15px',fontStyle:'bold',color:routeReady?'#55a86f':'#153a4a'}).setOrigin(.5);
+    items.push(statusText,this.add.text(270,455,`INVESTED  ${save.boat.investedCoins} / ${BOAT_REPAIR_COSTS.reduce((sum,cost)=>sum+cost,0)} COINS`,{fontSize:'14px',fontStyle:'bold',color:'#4b6973'}).setOrigin(.5));
     if(nextCost!==undefined){const canAfford=save.coins>=nextCost,repair=this.add.text(630,475,canAfford?`REPAIR  ${nextCost}`:`NEED ${nextCost-save.coins} MORE COINS`,{fontSize:'15px',fontStyle:'bold',color:'#fff6dc',backgroundColor:canAfford?'#ef6b4a':'#71858b'}).setPadding(14,8).setOrigin(.5);if(canAfford){repair.setInteractive({useHandCursor:true});repair.on('pointerdown',()=>this.repairCurrentBoat());}items.push(repair);}
-    else items.push(this.add.text(630,475,routeReady?'TRAVEL MAP COMING NEXT':'THE BOAT IS READY. YOU ARE NOT.',{fontSize:'14px',fontStyle:'bold',color:'#fff6dc',backgroundColor:routeReady?'#55a86f':'#71858b'}).setPadding(14,8).setOrigin(.5));
+    else items.push(this.add.text(630,475,routeReady?'TALK TO THE ANGLER FOR ROUTES':'MASTER SUNNY PIER TO SET SAIL',{fontSize:'14px',fontStyle:'bold',color:'#fff6dc',backgroundColor:routeReady?'#55a86f':'#71858b'}).setPadding(14,8).setOrigin(.5));
     this.boatModal=this.add.container(0,0,items).setDepth(220);
   }
   private repairCurrentBoat(){
-    const save=SaveService.load(),before=SaveService.boatStage(save);if(!SaveService.repairBoat(save)){AudioService.fail();return}AudioService.repair();SaveService.save(save);this.applyBoatFrame(save);this.refreshProgressHud();this.openBoatRepair();this.showToast(before===2?'Boat repaired! The gull has filed an appeal.':'Repair complete!');
+    const save=SaveService.load(),before=SaveService.boatStage(save),rockyBefore=SaveService.isLocationUnlocked(save,'rocky-cove');if(!SaveService.repairBoat(save)){AudioService.fail();return}AudioService.repair();SaveService.save(save);this.applyBoatFrame(save);this.refreshProgressHud();this.openBoatRepair();const rockyUnlocked=!rockyBefore&&SaveService.isLocationUnlocked(save,'rocky-cove');this.showToast(rockyUnlocked?'Rocky Cove unlocked!':before===2?'Boat repaired! Finish Sunny Pier mastery to sail.':'Repair complete!');
   }
   private closeBoatRepair(){AudioService.uiCancel();this.boatModal?.destroy(true);this.boatModal=undefined;this.finishModalClose()}
   private claimJob(id:string,x:number,y:number){

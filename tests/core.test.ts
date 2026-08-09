@@ -1,7 +1,7 @@
 import { describe,it,expect } from 'vitest';
 import { FISH, fishFlipXForDirection, pickFish } from '../src/gameplay/Fish';
 import { TripState } from '../src/gameplay/TripState';
-import { BOAT_REPAIR_COSTS, EQUIPMENT_COSTS, LEVEL_THRESHOLDS, SaveService } from '../src/core/SaveService';
+import { BOAT_REPAIR_COSTS, BOAT_REPAIR_TOTAL, EQUIPMENT_COSTS, LEVEL_REWARDS, LEVEL_THRESHOLDS, SaveService } from '../src/core/SaveService';
 import { QuestService } from '../src/gameplay/QuestService';
 import { selectRenderScale } from '../src/core/RenderQuality';
 import { LOCATION_ASSETS, MENU_ASSETS, PIER_ASSETS } from '../src/core/AssetManifest';
@@ -25,30 +25,33 @@ describe('core logic',()=>{
 
   it('migrates v1 progress without losing coins or xp',()=>{
     const save=SaveService.load({getItem:()=>JSON.stringify({version:1,coins:321,xp:88,tutorialComplete:true,muted:true})});
-    expect(save).toMatchObject({version:5,coins:321,xp:88,tutorialComplete:true,muted:true,unlockedLocationIds:['sunny-pier'],completedLocationIds:[],lastLocationId:'sunny-pier'});
+    expect(save).toMatchObject({version:6,coins:321,xp:88,tutorialComplete:true,muted:true,unlockedLocationIds:['sunny-pier'],completedLocationIds:[],lastLocationId:'sunny-pier',claimedLevelRewards:[1]});
     expect(save.fishStats).toEqual({});expect(save.discoveredTreasures).toEqual([]);
   });
 
   it('migrates v2 saves with empty pending badge claims',()=>{
     const save=SaveService.load({getItem:()=>JSON.stringify({version:2,coins:77,xp:44,achievementIds:['first-catch']})});
-    expect(save).toMatchObject({version:5,coins:77,xp:44,achievementIds:['first-catch'],pendingAchievementIds:[],unlockedLocationIds:['sunny-pier'],lastLocationId:'sunny-pier'});
+    expect(save).toMatchObject({version:6,coins:77,xp:44,achievementIds:['first-catch'],pendingAchievementIds:[],unlockedLocationIds:['sunny-pier'],lastLocationId:'sunny-pier'});
   });
 
-  it('unlocks new areas in order while keeping completed areas playable',()=>{
+  it('requires area mastery and a repaired boat before unlocking new routes',()=>{
     const save=SaveService.load({getItem:()=>null});
     expect(SaveService.isLocationUnlocked(save,'sunny-pier')).toBe(true);
     expect(SaveService.isLocationUnlocked(save,'rocky-cove')).toBe(false);
-    expect(SaveService.completeLocation(save,'sunny-pier')).toBe('rocky-cove');
+    ['minnow','sardine','perch'].forEach(id=>SaveService.recordCatch(save,id,.5));SaveService.discoverTreasure(save,'bottle');
+    SaveService.recordTripProgress(save,'sunny-pier',2,1);SaveService.recordTripProgress(save,'sunny-pier',3,0);
+    expect(save.completedLocationIds).toContain('sunny-pier');expect(SaveService.isLocationUnlocked(save,'rocky-cove')).toBe(false);
+    save.coins=BOAT_REPAIR_TOTAL;BOAT_REPAIR_COSTS.forEach(()=>expect(SaveService.repairBoat(save)).toBe(true));
     expect(save.unlockedLocationIds).toEqual(['sunny-pier','rocky-cove']);
-    expect(SaveService.completeLocation(save,'sunny-pier')).toBeUndefined();
-    expect(SaveService.completeLocation(save,'rocky-cove')).toBe('moonlit-trench');
+    ['kelp-wrasse','tide-mackerel'].forEach(id=>SaveService.recordCatch(save,id,.8));SaveService.discoverTreasure(save,'barnacle-bell');
+    SaveService.recordTripProgress(save,'rocky-cove',3,1);SaveService.recordTripProgress(save,'rocky-cove',2,0);SaveService.recordTripProgress(save,'rocky-cove',2,0);
     expect(save.completedLocationIds).toEqual(['sunny-pier','rocky-cove']);
     expect(save.unlockedLocationIds).toEqual(['sunny-pier','rocky-cove','moonlit-trench']);
   });
 
   it('migrates v3 saves without unlocking later areas early',()=>{
     const save=SaveService.load({getItem:()=>JSON.stringify({version:3,coins:42,xp:210,fishStats:{minnow:{count:2,bestWeight:.3}}})});
-    expect(save).toMatchObject({version:5,coins:42,xp:210,unlockedLocationIds:['sunny-pier'],completedLocationIds:[],lastLocationId:'sunny-pier'});
+    expect(save).toMatchObject({version:6,coins:42,xp:210,unlockedLocationIds:['sunny-pier'],completedLocationIds:[],lastLocationId:'sunny-pier'});
     expect(save.fishStats.minnow.count).toBe(2);
   });
 
@@ -57,6 +60,13 @@ describe('core logic',()=>{
     const locked=SaveService.load({getItem:()=>JSON.stringify({version:4,unlockedLocationIds:['sunny-pier'],lastLocationId:'moonlit-trench'})});
     expect(rocky.lastLocationId).toBe('rocky-cove');
     expect(locked.lastLocationId).toBe('sunny-pier');
+  });
+
+  it('migrates v5 progress without replaying old level rewards',()=>{
+    const save=SaveService.load({getItem:()=>JSON.stringify({version:5,coins:90,xp:450,boat:{investedCoins:350,unlocked:false},unlockedLocationIds:['sunny-pier','rocky-cove'],completedLocationIds:['sunny-pier'],lastLocationId:'rocky-cove'})});
+    expect(save).toMatchObject({version:6,coins:90,xp:450,claimedLevelRewards:[1,2,3,4],unlockedLocationIds:['sunny-pier','rocky-cove'],lastLocationId:'rocky-cove'});
+    expect(save.boat.investedCoins).toBe(350);expect(SaveService.awardXp(save,0)).toEqual([]);
+    expect(save.locationProgress['sunny-pier']).toEqual({trips:0,catches:0,treasures:0});
   });
 
   it('records catches without replacing a better record',()=>{
@@ -72,7 +82,15 @@ describe('core logic',()=>{
   it('maps every level threshold deterministically',()=>{
     LEVEL_THRESHOLDS.forEach((xp,index)=>expect(SaveService.levelProgress(xp).level).toBe(index+1));
     expect(SaveService.levelProgress(249)).toMatchObject({level:2,current:149,needed:150,maxed:false});
-    expect(SaveService.levelProgress(700)).toMatchObject({level:5,maxed:true});
+    expect(SaveService.levelProgress(700)).toMatchObject({level:5,maxed:false});
+    expect(SaveService.levelProgress(6000)).toMatchObject({level:15,maxed:true});
+  });
+
+  it('grants each level coin reward once',()=>{
+    const save=SaveService.load({getItem:()=>null}),rewards=SaveService.awardXp(save,250);
+    expect(rewards.map(reward=>reward.level)).toEqual([2,3]);
+    expect(save.coins).toBe(LEVEL_REWARDS[0].coins+LEVEL_REWARDS[1].coins);
+    expect(SaveService.awardXp(save,0)).toEqual([]);
   });
 
   it('unlocks cooler sticker tiers from total discoveries',()=>{
@@ -85,7 +103,7 @@ describe('core logic',()=>{
   it('only purchases equipment with enough coins and caps every path at three tiers',()=>{
     const save=SaveService.load({getItem:()=>null});save.coins=EQUIPMENT_COSTS.reduce((sum,cost)=>sum+cost,0);
     expect(SaveService.purchaseEquipment(save,'line')).toBe(true);expect(save.equipment.line).toBe(1);
-    expect(save.coins).toBe(650);expect(SaveService.purchaseEquipment(save,'line')).toBe(true);expect(SaveService.purchaseEquipment(save,'line')).toBe(true);
+    expect(save.coins).toBe(EQUIPMENT_COSTS[1]+EQUIPMENT_COSTS[2]);expect(SaveService.purchaseEquipment(save,'line')).toBe(true);expect(SaveService.purchaseEquipment(save,'line')).toBe(true);
     expect(SaveService.nextEquipmentCost(save,'line')).toBeUndefined();expect(SaveService.purchaseEquipment(save,'line')).toBe(false);
     expect(SaveService.purchaseEquipment(save,'reel')).toBe(false);expect(save.coins).toBe(0);
   });
@@ -99,7 +117,7 @@ describe('core logic',()=>{
   it('repairs the boat in three paid stages and unlocks it only at the end',()=>{
     const save=SaveService.load({getItem:()=>null});save.coins=BOAT_REPAIR_COSTS.reduce((sum,cost)=>sum+cost,0);
     BOAT_REPAIR_COSTS.forEach((cost,index)=>{expect(SaveService.nextBoatRepairCost(save)).toBe(cost);expect(SaveService.repairBoat(save)).toBe(true);expect(SaveService.boatStage(save)).toBe(index+1);});
-    expect(save.boat).toEqual({investedCoins:1000,unlocked:true});expect(save.coins).toBe(0);expect(SaveService.repairBoat(save)).toBe(false);
+    expect(save.boat).toEqual({investedCoins:BOAT_REPAIR_TOTAL,unlocked:true});expect(save.coins).toBe(0);expect(SaveService.repairBoat(save)).toBe(false);
   });
 
   it('holds completed harbor jobs until they are manually claimed',()=>{

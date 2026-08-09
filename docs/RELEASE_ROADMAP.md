@@ -81,12 +81,21 @@ Relevante Abnahmegroessen: 821x462, 907x510, 1216x684, 1280x720, 1366x768, 1536x
 
 ### Phase 3 - Progression und Economy
 
-- [ ] Boot-Reparatur mit echten Gebietsfreischaltungen verbinden.
-- [ ] Sunny Pier und Rocky Cove ueber Meisterschaftsziele statt einen einzelnen Run abschliessen.
-- [ ] Levelsystem auf mindestens 10 bis 15 Stufen erweitern.
-- [ ] Levelaufstiege mit konkreten Belohnungen verbinden.
-- [ ] Coin-Ertrag, Upgrade-Kosten und Boot-Kosten simulieren und balancieren.
-- [ ] Save-Migration fuer die neue Progression implementieren.
+- [x] Boot-Reparatur mit echten Gebietsfreischaltungen verbinden.
+- [x] Sunny Pier und Rocky Cove ueber Meisterschaftsziele statt einen einzelnen Run abschliessen.
+- [x] Levelsystem auf 15 Stufen erweitern.
+- [x] Levelaufstiege mit einmaligen Coin-Belohnungen verbinden.
+- [x] Coin-Ertrag, Upgrade-Kosten und Boot-Kosten simulieren und balancieren.
+- [x] Save-Migration auf Version 6 fuer die neue Progression implementieren.
+
+#### Phase-3-Ergebnis
+
+- Rocky Cove benoetigt Sunny-Pier-Meisterschaft und ein vollstaendig repariertes Boot.
+- Moonlit Trench benoetigt Rocky-Cove-Meisterschaft; abgeschlossene Gebiete bleiben spielbar.
+- Meisterschaft wertet Trips, Gesamtfaenge, entdeckte Fischarten und Schaetze je Gebiet aus.
+- Bestehende Spielstaende behalten bereits freigeschaltete Gebiete und erhalten keine alten Levelbelohnungen doppelt.
+- Balancing-Ziel laut `npm run balance:sim`: erstes Upgrade nach ca. 0,8 Trips, Boot nach ca. 4,8 priorisierten Trips, vier Tier-1-Upgrades plus Boot nach ca. 8 Trips.
+- Kosten nach Simulation: Ausruestung 100 / 180 / 300 Coins, Boot 120 / 200 / 280 Coins.
 
 ### Phase 4 - Kern-Gameplay
 
@@ -186,3 +195,6 @@ Relevante Abnahmegroessen: 821x462, 907x510, 1216x684, 1280x720, 1366x768, 1536x
 - Produktions-Build auf 3,10 MB bzw. 55 Dateien reduziert.
 - 24 automatisierte Tests und der Produktions-Build erfolgreich abgeschlossen.
 - Milestone A abgeschlossen; naechster geplanter Block ist Milestone B / Phase 3.
+- Milestone B / Phase 3 abgeschlossen: Meisterschaft, Boot-Gate, 15 Level, Levelbelohnungen und Save-Version 6 umgesetzt.
+- Reproduzierbare Economy-Simulation als `npm run balance:sim` ergaenzt und Zielkorridore bestanden.
+- Tests auf 26 erweitert; Produktions-Build und Browser-QA ohne neue Fehler abgeschlossen.
