@@ -1,6 +1,7 @@
 import { describe,it,expect } from 'vitest';
 import { FISH, fishFlipXForDirection, pickFish } from '../src/gameplay/Fish';
 import { TripState } from '../src/gameplay/TripState';
+import { captureDecayPerSecond, captureSeconds, fishBehavior, movementScale, verticalOffset } from '../src/gameplay/FishBehavior';
 import { BOAT_REPAIR_COSTS, BOAT_REPAIR_TOTAL, EQUIPMENT_COSTS, LEVEL_REWARDS, LEVEL_THRESHOLDS, SaveService } from '../src/core/SaveService';
 import { QuestService } from '../src/gameplay/QuestService';
 import { selectRenderScale } from '../src/core/RenderQuality';
@@ -11,6 +12,14 @@ describe('core logic',()=>{
   it('keeps the fish head on the leading side',()=>{
     expect(fishFlipXForDirection(-1)).toBe(false);
     expect(fishFlipXForDirection(1)).toBe(true);
+  });
+  it('maps fish difficulty to distinct movement and capture behavior',()=>{
+    const easy=FISH[0],hard=FISH[5],eel={...hard,id:'test-eel'};
+    expect(fishBehavior(easy)).toBe('cruise');expect(fishBehavior(hard)).toBe('flee');expect(fishBehavior(eel)).toBe('eel');
+    expect(captureSeconds(hard,2)).toBeGreaterThan(captureSeconds(easy,1));
+    expect(captureDecayPerSecond(hard)).toBeGreaterThan(captureDecayPerSecond(easy));
+    expect(movementScale(hard,500,0,50)).toBeGreaterThan(movementScale(easy,500,0,50));
+    expect(verticalOffset(eel,300,0)).not.toBe(verticalOffset(easy,300,0));
   });
   it('ends after three casts',()=>{const t=new TripState();for(let i=0;i<3;i++)t.useCast();expect(t.complete).toBe(true)});
   it('includes treasure bonuses in trip coins',()=>{const t=new TripState();t.addBonus(25);expect(t.coins).toBe(25)});

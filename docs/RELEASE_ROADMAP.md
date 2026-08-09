@@ -99,11 +99,11 @@ Relevante Abnahmegroessen: 821x462, 907x510, 1216x684, 1280x720, 1366x768, 1536x
 
 ### Phase 4 - Kern-Gameplay
 
-- [ ] `difficulty` und `hookMs` in reales Fischverhalten uebersetzen.
-- [ ] Sunny Pier als ruhige Einfuehrung gestalten.
+- [x] `difficulty` und `hookMs` in reales Fischverhalten uebersetzen.
+- [~] Sunny Pier als ruhige Einfuehrung gestalten.
 - [ ] Rocky Cove mit Kelp-Hindernissen und Stroemung ausstatten.
 - [ ] Moonlit Trench mit Licht-/Sichtmechanik und anspruchsvolleren Fischen ausstatten.
-- [ ] Unterschiedliche Bewegungsmuster wie Flucht, Sprint, Schwarm und Aalbewegung implementieren.
+- [~] Unterschiedliche Bewegungsmuster implementieren: ruhiges Schwimmen, Scheu, Sprint, Flucht und Aalbewegung sind aktiv; Schwarm-Feinschliff folgt.
 - [ ] Schatz-Spawns auf mehrere Zonen und Wahrscheinlichkeiten umstellen.
 - [ ] Cast-Quality bewusst integrieren oder ungenutzte Cast-Felder entfernen.
 
@@ -198,3 +198,5 @@ Relevante Abnahmegroessen: 821x462, 907x510, 1216x684, 1280x720, 1366x768, 1536x
 - Milestone B / Phase 3 abgeschlossen: Meisterschaft, Boot-Gate, 15 Level, Levelbelohnungen und Save-Version 6 umgesetzt.
 - Reproduzierbare Economy-Simulation als `npm run balance:sim` ergaenzt und Zielkorridore bestanden.
 - Tests auf 26 erweitert; Produktions-Build und Browser-QA ohne neue Fehler abgeschlossen.
+- Phase 4 / Slice 1: Fisch-Scheu, Sprints, Flucht und Aalbewegung sowie individuelle Fangdauer und Hook-Grace aus `difficulty` und `hookMs` umgesetzt.
+- Tests auf 27 erweitert; Produktions-Build fuer den ersten Gameplay-Slice erfolgreich.
