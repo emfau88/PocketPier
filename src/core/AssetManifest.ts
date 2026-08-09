@@ -55,6 +55,7 @@ export const PIER_ASSETS:GameAsset[]=[
 export const LOCATION_ASSETS:Record<FishingLocationId,GameAsset[]>={
   'sunny-pier':[
     image('bg-underwater',new URL('../assets/runtime/bg_underwater_sunny_pier.webp',import.meta.url)),
+    image('fg-underwater-sunny',new URL('../assets/runtime/fg_underwater_sunny.webp',import.meta.url)),
     image('fish-minnow',new URL('../assets/runtime/fish_minnow_hero.webp',import.meta.url)),
     image('fish-sardine',new URL('../assets/runtime/fish_sardine_hero.webp',import.meta.url)),
     image('fish-stripe-perch',new URL('../assets/runtime/fish_stripe_perch.webp',import.meta.url)),
@@ -67,6 +68,7 @@ export const LOCATION_ASSETS:Record<FishingLocationId,GameAsset[]>={
   ],
   'rocky-cove':[
     image('bg-underwater-rocky',new URL('../assets/runtime/bg_underwater_rocky_cove.webp',import.meta.url)),
+    image('fg-underwater-rocky',new URL('../assets/runtime/fg_underwater_rocky.webp',import.meta.url)),
     image('fish-kelp-wrasse',new URL('../assets/runtime/fish_kelp_wrasse.webp',import.meta.url)),
     image('fish-tide-mackerel',new URL('../assets/runtime/fish_tide_mackerel.webp',import.meta.url)),
     image('fish-ember-rockfish',new URL('../assets/runtime/fish_ember_rockfish.webp',import.meta.url)),
@@ -76,6 +78,7 @@ export const LOCATION_ASSETS:Record<FishingLocationId,GameAsset[]>={
   ],
   'moonlit-trench':[
     image('bg-underwater-moonlit',new URL('../assets/runtime/bg_underwater_moonlit_trench.webp',import.meta.url)),
+    image('fg-underwater-moonlit',new URL('../assets/runtime/fg_underwater_moonlit.webp',import.meta.url)),
     image('fish-lantern-fin',new URL('../assets/runtime/fish_lantern_fin.webp',import.meta.url)),
     image('fish-midnight-eel',new URL('../assets/runtime/fish_midnight_eel.webp',import.meta.url)),
     image('fish-royal-starfin',new URL('../assets/runtime/fish_royal_starfin.webp',import.meta.url)),
