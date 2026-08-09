@@ -19,3 +19,19 @@ export function currentVector(id:FishingLocationId,x:number,y:number,timeMs:numb
   const lane=Math.sin(y*.025+timeMs*.0014),gust=Math.sin(timeMs*.003+x*.012);
   return {x:22+lane*7+gust*4,y:Math.sin(timeMs*.0018+x*.009)*5};
 }
+
+const TREASURE_ZONES:Record<FishingLocationId,Array<{x:number;y:number}>>={
+  'sunny-pier':[{x:690,y:450},{x:790,y:405},{x:845,y:350}],
+  'rocky-cove':[{x:350,y:438},{x:640,y:452},{x:842,y:332}],
+  'moonlit-trench':[{x:610,y:452},{x:730,y:420},{x:830,y:345}]
+};
+
+export function treasureSpawnPoint(id:FishingLocationId,roll:number){
+  const zones=TREASURE_ZONES[id],index=Math.min(zones.length-1,Math.max(0,Math.floor(roll*zones.length)));return {...zones[index]};
+}
+
+export function treasureChance(id:FishingLocationId,castQuality:number,baitLevel:number){
+  const base=id==='sunny-pier'?.24:id==='rocky-cove'?.28:.34;return Math.min(.72,base+Math.max(0,Math.min(1,castQuality))*.18+Math.max(0,baitLevel)*.04);
+}
+
+export function castQualityFromMarker(marker:number){return Math.max(0,1-Math.abs(Math.max(0,Math.min(1,marker))-.5)*2)}

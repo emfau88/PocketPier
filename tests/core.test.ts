@@ -2,7 +2,7 @@ import { describe,it,expect } from 'vitest';
 import { FISH, fishFlipXForDirection, pickFish } from '../src/gameplay/Fish';
 import { TripState } from '../src/gameplay/TripState';
 import { captureDecayPerSecond, captureSeconds, fishBehavior, movementScale, verticalOffset } from '../src/gameplay/FishBehavior';
-import { currentVector, obstaclesForLocation, pointHitsObstacle } from '../src/gameplay/UnderwaterEnvironment';
+import { castQualityFromMarker, currentVector, obstaclesForLocation, pointHitsObstacle, treasureChance, treasureSpawnPoint } from '../src/gameplay/UnderwaterEnvironment';
 import { BOAT_REPAIR_COSTS, BOAT_REPAIR_TOTAL, EQUIPMENT_COSTS, LEVEL_REWARDS, LEVEL_THRESHOLDS, SaveService } from '../src/core/SaveService';
 import { QuestService } from '../src/gameplay/QuestService';
 import { selectRenderScale } from '../src/core/RenderQuality';
@@ -16,7 +16,7 @@ describe('core logic',()=>{
   });
   it('maps fish difficulty to distinct movement and capture behavior',()=>{
     const easy=FISH[0],hard=FISH[5],eel={...hard,id:'test-eel'};
-    expect(fishBehavior(easy)).toBe('cruise');expect(fishBehavior(hard)).toBe('flee');expect(fishBehavior(eel)).toBe('eel');
+    expect(fishBehavior(easy)).toBe('school');expect(fishBehavior(hard)).toBe('flee');expect(fishBehavior(eel)).toBe('eel');
     expect(captureSeconds(hard,2)).toBeGreaterThan(captureSeconds(easy,1));
     expect(captureDecayPerSecond(hard)).toBeGreaterThan(captureDecayPerSecond(easy));
     expect(movementScale(hard,500,0,50)).toBeGreaterThan(movementScale(easy,500,0,50));
@@ -27,6 +27,11 @@ describe('core logic',()=>{
     expect(currentVector('rocky-cove',400,300,1000).x).toBeGreaterThan(0);
     const obstacle=obstaclesForLocation('rocky-cove')[0];expect(pointHitsObstacle('rocky-cove',obstacle.x,obstacle.y)).toBe(true);
     expect(pointHitsObstacle('sunny-pier',obstacle.x,obstacle.y)).toBe(false);
+  });
+  it('turns cast timing into quality and deterministic treasure rules',()=>{
+    expect(castQualityFromMarker(.5)).toBe(1);expect(castQualityFromMarker(0)).toBe(0);expect(castQualityFromMarker(1)).toBe(0);
+    expect(treasureChance('moonlit-trench',1,3)).toBeGreaterThan(treasureChance('sunny-pier',0,0));
+    expect(treasureSpawnPoint('rocky-cove',0)).not.toEqual(treasureSpawnPoint('rocky-cove',.99));
   });
   it('ends after three casts',()=>{const t=new TripState();for(let i=0;i<3;i++)t.useCast();expect(t.complete).toBe(true)});
   it('includes treasure bonuses in trip coins',()=>{const t=new TripState();t.addBonus(25);expect(t.coins).toBe(25)});

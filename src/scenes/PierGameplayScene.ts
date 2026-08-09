@@ -10,7 +10,7 @@ import { captureDecayPerSecond, captureSeconds, fishBehavior, movementScale, ver
 import type { TreasureId } from '../gameplay/Treasure';
 import { TripState } from '../gameplay/TripState';
 import { FISHING_LOCATIONS, locationById, type FishingLocation, type FishingLocationId } from '../gameplay/FishingLocation';
-import { currentVector, obstaclesForLocation, pointHitsObstacle } from '../gameplay/UnderwaterEnvironment';
+import { castQualityFromMarker, currentVector, obstaclesForLocation, pointHitsObstacle, treasureChance, treasureSpawnPoint } from '../gameplay/UnderwaterEnvironment';
 
 type Phase='CAST'|'FLIGHT'|'UNDERWATER'|'RETRACTING'|'RESULT';
 type Target={fish:Fish;sprite:Phaser.GameObjects.Image;aura:Phaser.GameObjects.Arc;badge:Phaser.GameObjects.Text;slots:number;capture:number;direction:number;speed:number;baseY:number;phase:number;lastTouchAt:number};
@@ -18,7 +18,7 @@ type Target={fish:Fish;sprite:Phaser.GameObjects.Image;aura:Phaser.GameObjects.A
 export class PierGameplayScene extends Phaser.Scene {
   private phase:Phase='CAST'; private trip!:TripState; private castQuality=0; private marker=0; private markerDir=1;
   private surface!:Phaser.GameObjects.Container; private underwater?:Phaser.GameObjects.Container; private overlay?:Phaser.GameObjects.Container;
-  private title!:Phaser.GameObjects.Text; private help!:Phaser.GameObjects.Text; private meter!:Phaser.GameObjects.Graphics; private progressText!:Phaser.GameObjects.Text; private locationText!:Phaser.GameObjects.Text;
+  private title!:Phaser.GameObjects.Text; private help!:Phaser.GameObjects.Text; private meter!:Phaser.GameObjects.Graphics; private castHint!:Phaser.GameObjects.Text; private progressText!:Phaser.GameObjects.Text; private locationText!:Phaser.GameObjects.Text;
   private angler!:Phaser.GameObjects.Image; private bobber!:Phaser.GameObjects.Image;
   private hookPos=new Phaser.Math.Vector2(480,92); private hookTarget=new Phaser.Math.Vector2(480,92); private anchor=new Phaser.Math.Vector2(480,70);
   private rope!:Phaser.GameObjects.Graphics; private hookArt!:Phaser.GameObjects.Graphics; private captureArt!:Phaser.GameObjects.Graphics;
@@ -26,6 +26,7 @@ export class PierGameplayScene extends Phaser.Scene {
   private lineText!:Phaser.GameObjects.Text; private basketText!:Phaser.GameObjects.Text; private diveHint!:Phaser.GameObjects.Text; private reelBg!:Phaser.GameObjects.Rectangle; private reelTx!:Phaser.GameObjects.Text;
   private targets:Target[]=[]; private caught:{fish:Fish;sprite:Phaser.GameObjects.Image}[]=[]; private usedSlots=0; private maxSlots=2; private treasureFound=false;
   private treasure?:Phaser.GameObjects.Container; private maxLinePx=590; private lineMeters=22; private hookMoveSpeed=165; private reelSpeed=340; private basketDrag=.025; private baitLevel=0; private pointerSteering=false; private inputLockedUntil=0;
+  private treasurePosition=new Phaser.Math.Vector2(802,447);private moonlitShade?:Phaser.GameObjects.Rectangle;private moonlitMaskSource?:Phaser.GameObjects.Graphics;private moonlitGlow?:Phaser.GameObjects.Arc;
   private trail:Phaser.Math.Vector2[]=[]; private retractIndex=0;
   private keys!:Record<string,Phaser.Input.Keyboard.Key>;
   private reducedMotion=false;
@@ -43,7 +44,7 @@ export class PierGameplayScene extends Phaser.Scene {
     PortalBridge.gameplayStart();this.surface=this.add.container(0,0);this.drawSurface();
     this.title=this.add.text(480,28,'',{fontSize:'25px',fontStyle:'bold',color:'#fff6dc',stroke:'#153a4a',strokeThickness:6}).setOrigin(.5).setDepth(100);
     this.help=this.add.text(480,500,'',{fontSize:'20px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#fff6dc',align:'center'}).setPadding(14,9).setOrigin(.5).setDepth(100);
-    this.meter=this.add.graphics().setDepth(90);
+    this.meter=this.add.graphics().setDepth(90);this.castHint=this.add.text(480,92,'TAP IN THE GREEN',{fontSize:'12px',fontStyle:'bold',color:'#fff6dc',stroke:'#153a4a',strokeThickness:4}).setOrigin(.5).setDepth(100).setVisible(false);
     this.keys=this.input.keyboard?.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E,SPACE') as Record<string,Phaser.Input.Keyboard.Key>;
     this.input.on('pointerdown',(p:Phaser.Input.Pointer)=>{
       AudioService.unlock();
@@ -118,15 +119,15 @@ export class PierGameplayScene extends Phaser.Scene {
     });
   }
   private beginCast(){
-    this.clearOverlay();this.surface.setVisible(true);this.underwater?.destroy(true);this.underwater=undefined;this.phase='CAST';this.marker=0;this.markerDir=1;this.inputLockedUntil=this.time.now+250;
-    this.title.setText(`DIVE ${TRIP_CASTS-this.trip.castsLeft+1} OF ${TRIP_CASTS}`);this.help.setVisible(false);this.bobber.setVisible(false);
+    this.clearOverlay();this.clearMoonlitVisibility();this.surface.setVisible(true);this.underwater?.destroy(true);this.underwater=undefined;this.phase='CAST';this.marker=0;this.markerDir=1;this.inputLockedUntil=this.time.now+250;
+    this.title.setText(`DIVE ${TRIP_CASTS-this.trip.castsLeft+1} OF ${TRIP_CASTS}`);this.help.setVisible(false);this.bobber.setVisible(false);this.castHint.setVisible(true);this.drawCastMeter();
   }
   private press(){
     if(this.modalOpen||this.time.now<this.inputLockedUntil)return;AudioService.unlock();
     if(this.phase==='CAST')this.cast();else if(this.phase==='RESULT')this.nextDive();
   }
   private cast(){
-    this.castQuality=1;this.trip.useCast();this.phase='FLIGHT';this.hideCastMeter();AudioService.cast();this.help.setText('CASTING…');
+    this.castQuality=castQualityFromMarker(this.marker);this.trip.useCast();this.phase='FLIGHT';this.hideCastMeter();AudioService.cast();this.help.setText('CASTING…');if(this.castQuality>=.88)this.showToast('PERFECT CAST!');else if(this.castQuality>=.58)this.showToast('GOOD CAST');
     this.bobber.setDisplaySize(52,54);const bobberScaleX=this.bobber.scaleX,bobberScaleY=this.bobber.scaleY;
     this.bobber.setVisible(true).setPosition(555,278).setScale(bobberScaleX*.5,bobberScaleY*.5);
     this.tweens.add({targets:this.bobber,x:760,y:430,scaleX:bobberScaleX,scaleY:bobberScaleY,duration:500,ease:'Quad.easeOut',onComplete:()=>{
@@ -139,7 +140,7 @@ export class PierGameplayScene extends Phaser.Scene {
   private startUnderwater(){
     this.phase='UNDERWATER';this.surface.setVisible(false);this.help.setVisible(false);this.title.setText('');this.hookPos.set(480,92);this.hookTarget.copy(this.hookPos);this.usedSlots=0;this.caught=[];this.treasureFound=false;this.currentTreasureId=undefined;this.targets=[];this.touchingTarget=undefined;
     const equipment=SaveService.load().equipment;
-    this.maxLinePx=590+equipment.line*45;this.lineMeters=22+equipment.line*2;
+    this.maxLinePx=590+equipment.line*45+this.castQuality*30;this.lineMeters=22+equipment.line*2;
     this.hookMoveSpeed=165*(1+equipment.reel*.07);this.reelSpeed=340*(1+equipment.reel*.08);
     this.maxSlots=2+(equipment.basket>=3?1:0);this.basketDrag=Math.max(.01,.025-equipment.basket*.005);this.baitLevel=equipment.bait;
     const c=this.underwater=this.add.container(0,0);c.setDepth(20);
@@ -153,9 +154,9 @@ export class PierGameplayScene extends Phaser.Scene {
     this.reelBg=this.add.rectangle(860,39,150,48,0xef6b4a).setStrokeStyle(3,0xfff6dc).setInteractive({useHandCursor:true}).setDepth(60);
     this.reelTx=this.add.text(860,39,'REEL IN',{fontSize:'19px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(.5).setDepth(61);
     this.reelBg.on('pointerdown',()=>this.startRetract());
-    const hint=this.location.id==='rocky-cove'?'CURRENT PUSHES RIGHT • KELP BLOCKS THE HOOK':'MOVE THE HOOK • STAY ON A FISH • REEL IN ANYTIME';
+    const hint=this.location.id==='rocky-cove'?'CURRENT PUSHES RIGHT • KELP BLOCKS THE HOOK':this.location.id==='moonlit-trench'?'KEEP THE HOOK LIGHT CLOSE • DEEP FISH FLEE':'MOVE THE HOOK • STAY ON A FISH • REEL IN ANYTIME';
     this.diveHint=this.add.text(480,505,hint,{fontSize:'16px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#fff6dc'}).setPadding(10,6).setOrigin(.5).setDepth(60);
-    c.add([this.lineText,this.basketText,this.reelBg,this.reelTx,this.diveHint]);this.spawnTargets(c);this.spawnTreasure(c);this.refreshHud();this.layoutSafeArea();
+    this.spawnTargets(c);this.spawnTreasure(c);if(this.location.id==='moonlit-trench')this.setupMoonlitVisibility(c);c.add([this.lineText,this.basketText,this.reelBg,this.reelTx,this.diveHint]);this.refreshHud();this.layoutSafeArea();
     this.time.delayedCall(4500,()=>this.diveHint?.setVisible(false));PortalBridge.submitAnalyticsEvent('underwater_start');
   }
   private drawRockyEnvironment(c:Phaser.GameObjects.Container){
@@ -177,15 +178,22 @@ export class PierGameplayScene extends Phaser.Scene {
     const specs=[
       {fish:fish[0],x:280,y:195,slots:1,speed:32}, {fish:fish[1],x:690,y:175,slots:1,speed:40},
       {fish:fish[fish.length>=6?2:0],x:420,y:330,slots:1,speed:46}, {fish:fish[fish.length>=6?3:1],x:745,y:350,slots:1,speed:54},
-      {fish:fish.length>=6?(Math.random()<.18+this.baitLevel*.04?fish[5]:fish[4]):(Math.random()<.28+this.baitLevel*.04?fish[2]:fish[1]),x:310,y:445,slots:2,speed:58}
+      {fish:fish.length>=6?(Math.random()<.06+this.castQuality*.14+this.baitLevel*.04?fish[5]:fish[4]):(Math.random()<.12+this.castQuality*.18+this.baitLevel*.04?fish[2]:fish[1]),x:310,y:445,slots:2,speed:58}
     ];
     specs.forEach((s,i)=>{const rarityColor=s.fish.rarity==='Rare'?0xffd166:s.fish.rarity==='Uncommon'?0x69d6c5:0xfff6dc;const direction=i%2===0?1:-1;const aura=this.add.circle(s.x,s.y,s.slots===2?47:34,rarityColor,s.fish.rarity==='Common'?.08:.2).setDepth(29);const sprite=this.add.image(s.x,s.y,s.fish.texture).setDisplaySize(s.slots===2?112:76,s.slots===2?68:48).setTint(s.fish.color).setFlipX(fishFlipXForDirection(direction)).setDepth(30);const badge=this.add.text(s.x,s.y-37,s.fish.rarity==='Rare'?'★':s.fish.rarity==='Uncommon'?'◆':'•',{fontSize:s.fish.rarity==='Rare'?'18px':'14px',fontStyle:'bold',color:`#${rarityColor.toString(16).padStart(6,'0')}`}).setOrigin(.5).setDepth(31);const target:Target={...s,sprite,aura,badge,capture:0,direction,baseY:s.y,phase:i*1.2,lastTouchAt:0};this.targets.push(target);c.add([aura,sprite,badge])});
   }
   private spawnTreasure(c:Phaser.GameObjects.Container){
+    if(Math.random()>treasureChance(this.location.id,this.castQuality,this.baitLevel)){this.currentTreasureId=undefined;this.treasure=undefined;return;}
     const treasure=this.location.treasures[Math.floor(Math.random()*this.location.treasures.length)];this.currentTreasureId=treasure.id;
-    const glow=this.add.circle(802,447,38,0xffd166,.16),item=this.add.image(802,447,treasure.texture).setDisplaySize(68,68),label=this.add.text(802,490,'SECRET',{fontSize:'12px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(.5);
+    const position=treasureSpawnPoint(this.location.id,Math.random());this.treasurePosition.set(position.x,position.y);
+    const glow=this.add.circle(position.x,position.y,38,0xffd166,.12+this.castQuality*.08),item=this.add.image(position.x,position.y,treasure.texture).setDisplaySize(68,68),label=this.add.text(position.x,position.y+43,'SECRET',{fontSize:'12px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(.5);
     this.treasure=this.add.container(0,0,[glow,item,label]).setDepth(28);c.add(this.treasure);this.tweens.add({targets:glow,scale:1.2,alpha:.05,duration:750,yoyo:true,repeat:-1})
   }
+  private setupMoonlitVisibility(c:Phaser.GameObjects.Container){
+    const radius=145+this.baitLevel*16;this.moonlitMaskSource=this.add.graphics().setVisible(false);this.moonlitMaskSource.fillStyle(0xffffff,1).fillCircle(0,0,radius).setPosition(this.hookPos.x,this.hookPos.y);
+    const mask=this.moonlitMaskSource.createGeometryMask();mask.setInvertAlpha(true);this.moonlitShade=this.add.rectangle(480,270,960,540,0x041426,.66).setDepth(45).setMask(mask);this.moonlitGlow=this.add.circle(this.hookPos.x,this.hookPos.y,radius,0x7bd9ff,.07).setStrokeStyle(2,0xa9e5dc,.22).setDepth(44);c.add([this.moonlitGlow,this.moonlitShade]);
+  }
+  private clearMoonlitVisibility(){this.moonlitShade?.destroy();this.moonlitMaskSource?.destroy();this.moonlitGlow?.destroy();this.moonlitShade=undefined;this.moonlitMaskSource=undefined;this.moonlitGlow=undefined;}
   private updateUnderwater(delta:number){
     if(Phaser.Input.Keyboard.JustDown(this.keys.E)||Phaser.Input.Keyboard.JustDown(this.keys.SPACE)){this.startRetract();return}
     const d=delta/1000,move=new Phaser.Math.Vector2(),before=this.hookPos.clone();
@@ -217,7 +225,7 @@ export class PierGameplayScene extends Phaser.Scene {
   }
   private checkTreasure(){
     if(this.treasureFound||!this.treasure||!this.currentTreasureId)return;
-    if(Phaser.Math.Distance.Between(this.hookPos.x,this.hookPos.y,802,447)<38){
+    if(Phaser.Math.Distance.Between(this.hookPos.x,this.hookPos.y,this.treasurePosition.x,this.treasurePosition.y)<38){
       this.treasureFound=true;this.treasure.setVisible(false);this.trip.addBonus(25);
       const saved=SaveService.load(),isNew=!saved.discoveredTreasures.includes(this.currentTreasureId)&&!this.trip.treasures.some(t=>t.id===this.currentTreasureId);
       this.trip.addTreasure({id:this.currentTreasureId,isNew});AudioService.perfect();
@@ -227,6 +235,7 @@ export class PierGameplayScene extends Phaser.Scene {
   private drawHookAndRope(){
     this.rope.clear().lineStyle(3,0xfff6dc,.92).beginPath().moveTo(this.trail[0].x,this.trail[0].y);for(let i=1;i<this.trail.length;i++)this.rope.lineTo(this.trail[i].x,this.trail[i].y);this.rope.lineTo(this.hookPos.x,this.hookPos.y).strokePath();
     this.hookSprite.setPosition(this.hookPos.x,this.hookPos.y+13).setRotation(Math.sin(this.time.now*.004)*.04);
+    this.moonlitMaskSource?.setPosition(this.hookPos.x,this.hookPos.y);this.moonlitGlow?.setPosition(this.hookPos.x,this.hookPos.y);
     this.caught.forEach((c,i)=>{const p=this.pointBehind(26+i*34);c.sprite.setPosition(p.x+Math.sin(this.time.now*.006+i)*3,p.y+8).setRotation(Math.sin(this.time.now*.005+i)*.12)});
   }
   private pointBehind(distance:number){const pts=[...this.trail,this.hookPos];let left=distance;for(let i=pts.length-1;i>0;i--){const len=pts[i].distance(pts[i-1]);if(left<=len)return pts[i].clone().lerp(pts[i-1],left/len);left-=len}return pts[0].clone()}
@@ -236,7 +245,7 @@ export class PierGameplayScene extends Phaser.Scene {
     const step=this.reelSpeed*delta/1000;if(this.retractIndex<0){this.hookPos.copy(this.anchor);this.finishDive();return}const target=this.trail[this.retractIndex],v=target.clone().subtract(this.hookPos);if(v.length()<=step){this.hookPos.copy(target);this.trail.length=this.retractIndex+1;this.retractIndex--}else this.hookPos.add(v.setLength(step));this.drawHookAndRope();this.refreshHud();
   }
   private finishDive(){
-    this.phase='RESULT';this.underwater?.destroy(true);this.underwater=undefined;this.surface.setVisible(true);this.help.setVisible(false);let totalCoins=0,totalXp=0;
+    this.phase='RESULT';this.clearMoonlitVisibility();this.underwater?.destroy(true);this.underwater=undefined;this.surface.setVisible(true);this.help.setVisible(false);let totalCoins=0,totalXp=0;
     this.trip.addDiveCatchCount(this.caught.length);
     const saved=SaveService.load(),records:{fish:Fish;weight:number;isNew:boolean;isRecord:boolean}[]=[];
     this.caught.forEach(({fish})=>{
@@ -485,6 +494,7 @@ export class PierGameplayScene extends Phaser.Scene {
   private layoutSafeArea(){
     const safe=safeAreaInsets(this);
     if(this.title?.active)this.title.setY(28+safe.top);
+    if(this.castHint?.active)this.castHint.setY(92+safe.top);
     if(this.help?.active)this.help.setY(500-safe.bottom);
     if(this.locationText?.active)this.locationText.setPosition(22+safe.left,22+safe.top);
     if(this.progressText?.active)this.progressText.setPosition(938-safe.right,22+safe.top);
@@ -495,7 +505,10 @@ export class PierGameplayScene extends Phaser.Scene {
     if(this.diveHint?.active)this.diveHint.setY(505-safe.bottom);
   }
   private clearOverlay(){this.overlay?.destroy(true);this.overlay=undefined}
-  private hideCastMeter(){(this.children.getByName('cast-meter') as Phaser.GameObjects.Image|undefined)?.setVisible(false);this.meter.clear()}
+  private hideCastMeter(){(this.children.getByName('cast-meter') as Phaser.GameObjects.Image|undefined)?.setVisible(false);this.meter.clear();this.castHint.setVisible(false)}
+  private drawCastMeter(){
+    this.meter.clear().fillStyle(0x153a4a,.86).fillRoundedRect(350,67,260,15,7).fillStyle(0x55a86f,.95).fillRoundedRect(455,67,50,15,6).lineStyle(3,0xfff6dc,1).beginPath().moveTo(350+this.marker*260,63).lineTo(350+this.marker*260,86).strokePath();
+  }
   update(_:number,delta:number){
     if(!this.reducedMotion&&this.surface.visible){
       this.boatSprite.y=315+Math.round(Math.sin(this.time.now*.0016)*2);
@@ -504,7 +517,7 @@ export class PierGameplayScene extends Phaser.Scene {
         if(cloud.sprite.x-cloud.sprite.displayWidth/2>960)cloud.sprite.x=-cloud.sprite.displayWidth/2;
       }
     }
-    if(this.phase==='CAST'){this.hideCastMeter()}
+    if(this.phase==='CAST'){const step=delta/1000*.72*this.markerDir;this.marker+=step;if(this.marker>=1){this.marker=1;this.markerDir=-1}else if(this.marker<=0){this.marker=0;this.markerDir=1}this.drawCastMeter()}
     else if(this.phase==='UNDERWATER')this.updateUnderwater(delta);else if(this.phase==='RETRACTING')this.updateRetract(delta);
   }
 }
