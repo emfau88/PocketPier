@@ -45,7 +45,7 @@ export class PierGameplayScene extends Phaser.Scene {
     PortalBridge.gameplayStart();this.surface=this.add.container(0,0);this.drawSurface();
     this.title=this.add.text(480,28,'',{fontSize:'25px',fontStyle:'bold',color:'#fff6dc',stroke:'#153a4a',strokeThickness:6}).setOrigin(.5).setDepth(100);
     this.help=this.add.text(480,500,'',{fontSize:'20px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#fff6dc',align:'center'}).setPadding(14,9).setOrigin(.5).setDepth(100);
-    this.meter=this.add.graphics().setDepth(90);this.castHint=this.add.text(480,92,'TAP IN THE GREEN',{fontSize:'12px',fontStyle:'bold',color:'#fff6dc',stroke:'#153a4a',strokeThickness:4}).setOrigin(.5).setDepth(100).setVisible(false);
+    this.meter=this.add.graphics().setDepth(90);this.castHint=this.add.text(480,92,'TAP TO CAST · GREEN = BONUS',{fontSize:'12px',fontStyle:'bold',color:'#fff6dc',stroke:'#153a4a',strokeThickness:4}).setOrigin(.5).setDepth(100).setVisible(false);
     this.keys=this.input.keyboard?.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E,SPACE') as Record<string,Phaser.Input.Keyboard.Key>;
     this.input.on('pointerdown',(p:Phaser.Input.Pointer)=>{
       AudioService.unlock();

@@ -221,3 +221,4 @@ Ergebnis Phase 5: Die drei Gebiete besitzen nun eigenstaendige Fischgrafiken und
 - Phase 5 / Asset-Slice 4: Vorhandene Catch-, Reel-, Cast- und Perfect-Hook-Grafiken bewertet; Perfect-Hook als animiertes Perfect-Cast-Feedback integriert.
 - Phase 5 abgeschlossen: Full-HD-/Responsive-Qualitaet, neue Fische, Gebiets-Layer, sichtbare Ausruestungsstufen und Asset-Audit verifiziert.
 - Mobile-Landscape-Nachbesserung: flaechenfuellendes Cover-Scaling statt seitlicher Balken; HUD und Timing-Anzeige beruecksichtigen Bildbeschnitt und Geraete-Safe-Areas.
+- Cast-Timing als freiwilligen Bonus kenntlich gemacht: Der erste Tap wirft immer aus, der gruene Bereich verbessert nur die Belohnungschancen.
