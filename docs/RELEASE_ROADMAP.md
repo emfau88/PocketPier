@@ -111,8 +111,8 @@ Ergebnis Phase 4: Alle drei Angelgebiete besitzen nun eine eigene spielmechanisc
 
 ### Phase 5 - Content- und Asset-Produktion
 
-- [ ] Menue, Pier und alle drei Unterwasserwelten auf konsistente Full-HD-Qualitaet bringen.
-- [ ] Eigene Fischgrafiken fuer Stripe Perch, Bluegill, Copper Carp und Glass Trout erstellen.
+- [~] Menue, Pier und alle drei Unterwasserwelten auf konsistente Full-HD-Qualitaet bringen; Fisch-Art-Pass abgeschlossen, Umwelt-Layer folgen.
+- [x] Eigene Fischgrafiken fuer Stripe Perch, Bluegill, Copper Carp und Glass Trout erstellen.
 - [ ] Unterwasser-Vordergrund-, Partikel- und Tiefenlayer je Gebiet erstellen.
 - [ ] Sichtbare Upgrade-Zustaende fuer Leine, Rolle, Koeder und Korb integrieren.
 - [ ] Vorhandene Catch-Card-, Reel-, Cast- und Perfect-Hook-Assets vor Neuproduktion pruefen.
@@ -208,3 +208,5 @@ Ergebnis Phase 4: Alle drei Angelgebiete besitzen nun eine eigene spielmechanisc
 - Phase 4 / Slice 3: Sunny-Pier-Schwarmverhalten, Moonlit-Lichtkegel, gebietsbezogene Schatz-Zonen und sichtbare Cast-Quality umgesetzt.
 - Moonlit-Layering nach Browser-Sichtpruefung korrigiert, damit HUD und Bedienhinweise ungedimmt bleiben.
 - Phase 4 abgeschlossen; Tests auf 29 erweitert, Production-Build und Browser-QA fuer Cast-Timing und Moonlit Trench erfolgreich.
+- Phase 5 / Asset-Slice 1: Die vier Sunny-Pier-Platzhalter durch eigene ImageGen-Fischgrafiken im bestehenden Papier-Illustrationsstil ersetzt.
+- Alle sechs Sunny-Pier-Fische besitzen nun eine eigene Runtime-Textur; Tests auf 30 erweitert und Desktop-Browser-QA ohne Assetfehler abgeschlossen.

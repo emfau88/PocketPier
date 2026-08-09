@@ -3,10 +3,10 @@ export interface Fish { id:string;name:string;texture:string;rarity:Rarity;value
 export const FISH: Fish[] = [
   {id:'minnow',name:'Tiny Minnow',texture:'fish-minnow',rarity:'Common',value:8,xp:5,hookMs:1150,difficulty:1,color:0xa9e5dc,weightMin:.12,weightMax:.42,description:'Small, fearless, and always hungry.',hint:'Look near the bright upper water.'},
   {id:'sardine',name:'Silver Sardine',texture:'fish-sardine',rarity:'Common',value:12,xp:6,hookMs:1050,difficulty:1,color:0xc9d6df,weightMin:.25,weightMax:.7,description:'A quick flash of silver in the sun.',hint:'Often cruises across open water.'},
-  {id:'perch',name:'Stripe Perch',texture:'fish-minnow',rarity:'Common',value:15,xp:7,hookMs:1000,difficulty:2,color:0xffd166,weightMin:.45,weightMax:1.1,description:'Striped like a tiny harbor tiger.',hint:'Search the middle depths.'},
-  {id:'bluegill',name:'Bluegill',texture:'fish-minnow',rarity:'Uncommon',value:28,xp:11,hookMs:850,difficulty:2,color:0x639fab,weightMin:.55,weightMax:1.35,description:'Calm until a hook gets close.',hint:'Likes the quieter rocky side.'},
-  {id:'carp',name:'Copper Carp',texture:'fish-minnow',rarity:'Uncommon',value:34,xp:13,hookMs:780,difficulty:3,color:0xc97b63,weightMin:1.1,weightMax:2.6,description:'A burnished old soul of the pier.',hint:'Stay low and follow the seabed.'},
-  {id:'trout',name:'Glass Trout',texture:'fish-minnow',rarity:'Rare',value:68,xp:22,hookMs:650,difficulty:4,color:0xc4f1f9,weightMin:1.4,weightMax:3.4,description:'Almost invisible until it turns.',hint:'Rarely appears in the deep water.'}
+  {id:'perch',name:'Stripe Perch',texture:'fish-stripe-perch',rarity:'Common',value:15,xp:7,hookMs:1000,difficulty:2,color:0xffffff,weightMin:.45,weightMax:1.1,description:'Striped like a tiny harbor tiger.',hint:'Search the middle depths.'},
+  {id:'bluegill',name:'Bluegill',texture:'fish-bluegill',rarity:'Uncommon',value:28,xp:11,hookMs:850,difficulty:2,color:0xffffff,weightMin:.55,weightMax:1.35,description:'Calm until a hook gets close.',hint:'Likes the quieter rocky side.'},
+  {id:'carp',name:'Copper Carp',texture:'fish-copper-carp',rarity:'Uncommon',value:34,xp:13,hookMs:780,difficulty:3,color:0xffffff,weightMin:1.1,weightMax:2.6,description:'A burnished old soul of the pier.',hint:'Stay low and follow the seabed.'},
+  {id:'trout',name:'Glass Trout',texture:'fish-glass-trout',rarity:'Rare',value:68,xp:22,hookMs:650,difficulty:4,color:0xffffff,weightMin:1.4,weightMax:3.4,description:'Almost invisible until it turns.',hint:'Rarely appears in the deep water.'}
 ];
 export function pickFish(quality: number, random = Math.random): Fish {
   const rare = Math.min(.14, .03 + quality * .08), uncommon = .22 + quality * .12, roll = random();

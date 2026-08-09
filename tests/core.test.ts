@@ -22,6 +22,9 @@ describe('core logic',()=>{
     expect(movementScale(hard,500,0,50)).toBeGreaterThan(movementScale(easy,500,0,50));
     expect(verticalOffset(eel,300,0)).not.toBe(verticalOffset(easy,300,0));
   });
+  it('uses a distinct authored texture for every Sunny Pier fish',()=>{
+    expect(new Set(FISH.map(fish=>fish.texture)).size).toBe(FISH.length);
+  });
   it('adds current and solid kelp only to Rocky Cove',()=>{
     expect(currentVector('sunny-pier',400,300,1000)).toEqual({x:0,y:0});
     expect(currentVector('rocky-cove',400,300,1000).x).toBeGreaterThan(0);

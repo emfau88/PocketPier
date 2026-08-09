@@ -57,6 +57,10 @@ export const LOCATION_ASSETS:Record<FishingLocationId,GameAsset[]>={
     image('bg-underwater',new URL('../assets/runtime/bg_underwater_sunny_pier.webp',import.meta.url)),
     image('fish-minnow',new URL('../assets/runtime/fish_minnow_hero.webp',import.meta.url)),
     image('fish-sardine',new URL('../assets/runtime/fish_sardine_hero.webp',import.meta.url)),
+    image('fish-stripe-perch',new URL('../assets/runtime/fish_stripe_perch.webp',import.meta.url)),
+    image('fish-bluegill',new URL('../assets/runtime/fish_bluegill.webp',import.meta.url)),
+    image('fish-copper-carp',new URL('../assets/runtime/fish_copper_carp.webp',import.meta.url)),
+    image('fish-glass-trout',new URL('../assets/runtime/fish_glass_trout.webp',import.meta.url)),
     image('secret-bottle',new URL('../assets/runtime/secret_bottle.webp',import.meta.url)),
     image('secret-pearl',new URL('../assets/runtime/secret_pearl.webp',import.meta.url)),
     image('secret-compass',new URL('../assets/runtime/secret_compass.webp',import.meta.url))
