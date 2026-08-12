@@ -15,7 +15,7 @@ Pocket Pier is a cozy fishing adventure built for quick browser sessions and sat
 ### Feature list
 
 - Three replayable fishing locations with distinct underwater mechanics
-- 16 unique fish species and 12 discoverable treasures
+- 16 unique fish species and 9 discoverable treasures
 - 15 Harbor Jobs, 13 claimable badges, 15 player levels, and four upgrade paths
 - Boat repair and location-mastery progression
 - Fishbook, records, treasure collection, and unlockable bobber styles

@@ -129,7 +129,7 @@ Ergebnis Phase 5: Die drei Gebiete besitzen nun eigenstaendige Fischgrafiken und
 - [x] Kosmetische Belohnungen als Bobber-Stile und Hafen-/Cooler-Sticker ergaenzen.
 - [x] Completion-Bedingungen korrekt an konkrete Gebiete koppeln.
 
-Ergebnis Phase 6: 15 manuell abholbare Harbor Jobs, 13 sichtbare Badges mit Fortschritt, 16 Fischarten, 12 Schaetze und vier ueber Badges freischaltbare Bobber-Stile. Rocky Cove und Moonlit Trench besitzen nun je fuenf statt drei Fischarten. Sammlungs-, Gebiets- und Gesamtabschlussbedingungen werten ausschliesslich die korrekten Gebiete aus.
+Ergebnis Phase 6: 15 manuell abholbare Harbor Jobs, 13 sichtbare Badges mit Fortschritt, 16 Fischarten, 9 Schaetze und vier ueber Badges freischaltbare Bobber-Stile. Rocky Cove und Moonlit Trench besitzen nun je fuenf statt drei Fischarten. Sammlungs-, Gebiets- und Gesamtabschlussbedingungen werten ausschliesslich die korrekten Gebiete aus.
 
 ### Phase 7 - Audio, Feedback und Onboarding
 
