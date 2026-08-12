@@ -4,10 +4,12 @@ import { TripState } from '../src/gameplay/TripState';
 import { captureDecayPerSecond, captureSeconds, fishBehavior, movementScale, verticalOffset } from '../src/gameplay/FishBehavior';
 import { castQualityFromMarker, currentVector, obstaclesForLocation, pointHitsObstacle, treasureChance, treasureSpawnPoint } from '../src/gameplay/UnderwaterEnvironment';
 import { BOAT_REPAIR_COSTS, BOAT_REPAIR_TOTAL, EQUIPMENT_COSTS, LEVEL_REWARDS, LEVEL_THRESHOLDS, SaveService } from '../src/core/SaveService';
-import { QuestService } from '../src/gameplay/QuestService';
-import { contentCropInsets, selectRenderScale } from '../src/core/RenderQuality';
+import { ACHIEVEMENTS, QUESTS, QuestService } from '../src/gameplay/QuestService';
+import { contentCropInsets, scaleToVisibleBounds, selectRenderScale } from '../src/core/RenderQuality';
 import { LOCATION_ASSETS, MENU_ASSETS, PIER_ASSETS } from '../src/core/AssetManifest';
 import { joystickKnobPosition, virtualJoystickVector } from '../src/gameplay/TouchControls';
+import { bobberStyle, cycleBobberStyle, unlockedBobberStyles } from '../src/gameplay/Cosmetics';
+import { FISHING_LOCATIONS } from '../src/gameplay/FishingLocation';
 
 describe('core logic',()=>{
   it('picks an allowed fish',()=>expect(pickFish(0,()=>.9).rarity).toBe('Common'));
@@ -57,6 +59,8 @@ describe('core logic',()=>{
       {left:-80,top:0,right:1040,bottom:540},
       {left:0,top:0,right:960,bottom:540}
     )).toEqual({top:0,right:80,bottom:0,left:80});
+    expect(scaleToVisibleBounds({width:960,height:444},940,520)).toBeCloseTo(444/520);
+    expect(scaleToVisibleBounds({width:960,height:540},940,520)).toBe(1);
   });
 
   it('turns a floating touch joystick into clamped analog steering',()=>{
@@ -68,23 +72,23 @@ describe('core logic',()=>{
 
   it('migrates v1 progress without losing coins or xp',()=>{
     const save=SaveService.load({getItem:()=>JSON.stringify({version:1,coins:321,xp:88,tutorialComplete:true,muted:true})});
-    expect(save).toMatchObject({version:7,coins:321,xp:88,tutorialComplete:true,underwaterControlsSeen:false,muted:true,unlockedLocationIds:['sunny-pier'],completedLocationIds:[],lastLocationId:'sunny-pier',claimedLevelRewards:[1]});
+    expect(save).toMatchObject({version:9,coins:321,xp:88,tutorialComplete:true,underwaterControlsSeen:false,hubIntroStep:0,castTutorialSeen:false,bobberStyleId:'classic',muted:true,unlockedLocationIds:['sunny-pier'],completedLocationIds:[],lastLocationId:'sunny-pier',claimedLevelRewards:[1]});
     expect(save.fishStats).toEqual({});expect(save.discoveredTreasures).toEqual([]);
   });
 
   it('migrates v2 saves with empty pending badge claims',()=>{
     const save=SaveService.load({getItem:()=>JSON.stringify({version:2,coins:77,xp:44,achievementIds:['first-catch']})});
-    expect(save).toMatchObject({version:7,coins:77,xp:44,achievementIds:['first-catch'],pendingAchievementIds:[],unlockedLocationIds:['sunny-pier'],lastLocationId:'sunny-pier'});
+    expect(save).toMatchObject({version:9,coins:77,xp:44,achievementIds:['first-catch'],pendingAchievementIds:[],unlockedLocationIds:['sunny-pier'],lastLocationId:'sunny-pier'});
   });
 
   it('persists the one-time underwater touch tutorial flag',()=>{
-    const save=SaveService.load({getItem:()=>JSON.stringify({version:7,underwaterControlsSeen:true})});
-    expect(save.underwaterControlsSeen).toBe(true);
+    const save=SaveService.load({getItem:()=>JSON.stringify({version:7,underwaterControlsSeen:true,hubIntroStep:2,castTutorialSeen:true})});
+    expect(save).toMatchObject({version:9,underwaterControlsSeen:true,hubIntroStep:2,castTutorialSeen:true});
   });
 
   it('migrates v6 progress and shows the new touch tutorial once',()=>{
     const save=SaveService.load({getItem:()=>JSON.stringify({version:6,coins:25,claimedLevelRewards:[1,2]})});
-    expect(save).toMatchObject({version:7,coins:25,claimedLevelRewards:[1,2],underwaterControlsSeen:false});
+    expect(save).toMatchObject({version:9,coins:25,claimedLevelRewards:[1,2],underwaterControlsSeen:false,hubIntroStep:0,castTutorialSeen:false});
   });
 
   it('requires area mastery and a repaired boat before unlocking new routes',()=>{
@@ -104,7 +108,7 @@ describe('core logic',()=>{
 
   it('migrates v3 saves without unlocking later areas early',()=>{
     const save=SaveService.load({getItem:()=>JSON.stringify({version:3,coins:42,xp:210,fishStats:{minnow:{count:2,bestWeight:.3}}})});
-    expect(save).toMatchObject({version:7,coins:42,xp:210,unlockedLocationIds:['sunny-pier'],completedLocationIds:[],lastLocationId:'sunny-pier'});
+    expect(save).toMatchObject({version:9,coins:42,xp:210,unlockedLocationIds:['sunny-pier'],completedLocationIds:[],lastLocationId:'sunny-pier'});
     expect(save.fishStats.minnow.count).toBe(2);
   });
 
@@ -117,7 +121,7 @@ describe('core logic',()=>{
 
   it('migrates v5 progress without replaying old level rewards',()=>{
     const save=SaveService.load({getItem:()=>JSON.stringify({version:5,coins:90,xp:450,boat:{investedCoins:350,unlocked:false},unlockedLocationIds:['sunny-pier','rocky-cove'],completedLocationIds:['sunny-pier'],lastLocationId:'rocky-cove'})});
-    expect(save).toMatchObject({version:7,coins:90,xp:450,claimedLevelRewards:[1,2,3,4],unlockedLocationIds:['sunny-pier','rocky-cove'],lastLocationId:'rocky-cove'});
+    expect(save).toMatchObject({version:9,coins:90,xp:450,claimedLevelRewards:[1,2,3,4],unlockedLocationIds:['sunny-pier','rocky-cove'],lastLocationId:'rocky-cove'});
     expect(save.boat.investedCoins).toBe(350);expect(SaveService.awardXp(save,0)).toEqual([]);
     expect(save.locationProgress['sunny-pier']).toEqual({trips:0,catches:0,treasures:0});
   });
@@ -153,6 +157,12 @@ describe('core logic',()=>{
     ['carp','trout'].forEach(id=>SaveService.recordCatch(save,id,1));SaveService.discoverTreasure(save,'pearl');expect(save.coolerStickerTier).toBe(3);
   });
 
+  it('unlocks and cycles cosmetic bobber styles from claimed badges',()=>{
+    const save=SaveService.load({getItem:()=>null});expect(unlockedBobberStyles(save).map(style=>style.id)).toEqual(['classic']);
+    save.achievementIds=['a','b','c'];expect(unlockedBobberStyles(save).map(style=>style.id)).toEqual(['classic','seafoam']);
+    expect(cycleBobberStyle(save).id).toBe('seafoam');expect(bobberStyle(save).id).toBe('seafoam');
+  });
+
   it('only purchases equipment with enough coins and caps every path at three tiers',()=>{
     const save=SaveService.load({getItem:()=>null});save.coins=EQUIPMENT_COSTS.reduce((sum,cost)=>sum+cost,0);
     expect(SaveService.purchaseEquipment(save,'line')).toBe(true);expect(save.equipment.line).toBe(1);
@@ -186,6 +196,18 @@ describe('core logic',()=>{
     const save=SaveService.load({getItem:()=>null});SaveService.recordCatch(save,'minnow',.3);
     const ready=QuestService.discoverAchievements(save);expect(ready.map(badge=>badge.id)).toContain('first-catch');expect(save.achievementIds).not.toContain('first-catch');
     const reward=QuestService.claimAchievement(save,'first-catch');expect(reward?.coins).toBe(30);expect(save.achievementIds).toContain('first-catch');expect(save.pendingAchievementIds).not.toContain('first-catch');
+  });
+
+  it('ships a varied job pool and substantial badge goals',()=>{
+    expect(QUESTS.length).toBeGreaterThanOrEqual(12);expect(ACHIEVEMENTS.length).toBeGreaterThanOrEqual(10);
+    expect(FISHING_LOCATIONS.slice(1).every(location=>location.fish.length>=5)).toBe(true);
+  });
+
+  it('tracks Sunny Scholar only from Sunny Pier discoveries',()=>{
+    const save=SaveService.load({getItem:()=>null}),nonSunny=FISHING_LOCATIONS.slice(1).flatMap(location=>location.fish).slice(0,FISH.length);
+    nonSunny.forEach(fish=>SaveService.recordCatch(save,fish.id,.8));QuestService.discoverAchievements(save);
+    expect(save.pendingAchievementIds).not.toContain('sunny-complete');expect(QuestService.achievementProgress(save,'sunny-complete').current).toBe(0);
+    FISH.forEach(fish=>SaveService.recordCatch(save,fish.id,.8));QuestService.discoverAchievements(save);expect(save.pendingAchievementIds).toContain('sunny-complete');
   });
 });
 

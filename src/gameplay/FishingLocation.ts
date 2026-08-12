@@ -19,13 +19,17 @@ export interface FishingLocation {
 const ROCKY_COVE_FISH:Fish[]=[
   {id:'kelp-wrasse',name:'Kelp Wrasse',texture:'fish-kelp-wrasse',rarity:'Common',value:18,xp:8,hookMs:980,difficulty:2,color:0xffffff,weightMin:.4,weightMax:1.1,description:'A green streak with excellent camouflage.',hint:'Search between the tall kelp leaves.'},
   {id:'tide-mackerel',name:'Tide Mackerel',texture:'fish-tide-mackerel',rarity:'Uncommon',value:34,xp:13,hookMs:790,difficulty:3,color:0xffffff,weightMin:.8,weightMax:1.9,description:'Fast, striped, and powered by the current.',hint:'It patrols the open water by the rocks.'},
-  {id:'ember-rockfish',name:'Ember Rockfish',texture:'fish-ember-rockfish',rarity:'Rare',value:82,xp:27,hookMs:610,difficulty:4,color:0xffffff,weightMin:1.2,weightMax:3.2,description:'A fiery little monarch of the cove.',hint:'A rare orange glow near the seabed.'}
+  {id:'ember-rockfish',name:'Ember Rockfish',texture:'fish-ember-rockfish',rarity:'Rare',value:82,xp:27,hookMs:610,difficulty:4,color:0xffffff,weightMin:1.2,weightMax:3.2,description:'A fiery little monarch of the cove.',hint:'A rare orange glow near the seabed.'},
+  {id:'pebble-goby',name:'Pebble Goby',texture:'fish-pebble-goby',rarity:'Common',value:20,xp:9,hookMs:960,difficulty:2,color:0xffffff,weightMin:.3,weightMax:.9,description:'Looks grumpy because every pebble is competition.',hint:'Wait near the sandy gaps between low rocks.'},
+  {id:'storm-snapper',name:'Storm Snapper',texture:'fish-storm-snapper',rarity:'Uncommon',value:46,xp:16,hookMs:700,difficulty:4,color:0xffffff,weightMin:1.0,weightMax:2.5,description:'The cove forecast says: fast with a chance of fins.',hint:'It cuts through the strongest current.'}
 ];
 
 const MOONLIT_TRENCH_FISH:Fish[]=[
   {id:'lantern-fin',name:'Lantern Fin',texture:'fish-lantern-fin',rarity:'Common',value:28,xp:11,hookMs:900,difficulty:2,color:0xffffff,weightMin:.35,weightMax:1.0,description:'Carries its own tiny night-light.',hint:'Follow the blue lights in the upper trench.'},
   {id:'midnight-eel',name:'Midnight Eel',texture:'fish-midnight-eel',rarity:'Uncommon',value:55,xp:18,hookMs:720,difficulty:4,color:0xffffff,weightMin:1.1,weightMax:2.8,description:'A ribbon of darkness with bright eyes.',hint:'It winds between the deep stone shelves.'},
-  {id:'starfin',name:'Royal Starfin',texture:'fish-royal-starfin',rarity:'Rare',value:120,xp:36,hookMs:540,difficulty:5,color:0xffffff,weightMin:1.4,weightMax:3.8,description:'The trench wears a crown when this fish appears.',hint:'Look for a golden shimmer at the deepest edge.'}
+  {id:'starfin',name:'Royal Starfin',texture:'fish-royal-starfin',rarity:'Rare',value:120,xp:36,hookMs:540,difficulty:5,color:0xffffff,weightMin:1.4,weightMax:3.8,description:'The trench wears a crown when this fish appears.',hint:'Look for a golden shimmer at the deepest edge.'},
+  {id:'velvet-lantern',name:'Velvet Lanternfish',texture:'fish-velvet-lantern',rarity:'Common',value:31,xp:12,hookMs:860,difficulty:3,color:0xffffff,weightMin:.25,weightMax:.85,description:'Half night-light, half afternoon nap.',hint:'A warm fin-glow drifts in the upper darkness.'},
+  {id:'crescent-ray',name:'Crescent Ray',texture:'fish-crescent-ray',rarity:'Uncommon',value:72,xp:23,hookMs:650,difficulty:4,color:0xffffff,weightMin:1.0,weightMax:2.7,description:'It insists the stars are freckles, actually.',hint:'Watch the wide shadow circling the moonbeams.'}
 ];
 
 const ROCKY_COVE_TREASURES:Treasure[]=[

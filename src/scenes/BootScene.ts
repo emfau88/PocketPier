@@ -16,6 +16,11 @@ export class BootScene extends Phaser.Scene {
   }
   async create(){
     AudioService.bind(this.sound);
-    await PortalBridge.init();this.scene.start('Menu');
+    await PortalBridge.init();
+    const system=PortalBridge.systemInfo();
+    PortalBridge.submitAnalyticsEvent('system_ready',{
+      device:system?.device?.type??'unknown',os:system?.os?.name??'unknown',browser:system?.browser?.name??'unknown',application:system?.applicationType??'web',locale:system?.locale??'unknown'
+    });
+    PortalBridge.loadingStop();this.scene.start('Menu');
   }
 }

@@ -1,4 +1,5 @@
 import { FISHING_LOCATIONS, locationById, type FishingLocationId } from '../gameplay/FishingLocation';
+import { PortalBridge } from './PortalBridge';
 
 export interface FishStat { count:number; bestWeight:number }
 export interface EquipmentLevels { line:number; reel:number; basket:number; bait:number }
@@ -10,11 +11,13 @@ export const BOAT_REPAIR_COSTS=[120,200,280] as const;
 export const BOAT_REPAIR_TOTAL=BOAT_REPAIR_COSTS.reduce((sum,cost)=>sum+cost,0);
 export interface BoatProgress { investedCoins:number; unlocked:boolean }
 export interface SaveData {
-  version:7;
+  version:9;
   coins:number;
   xp:number;
   tutorialComplete:boolean;
   underwaterControlsSeen:boolean;
+  hubIntroStep:number;
+  castTutorialSeen:boolean;
   muted:boolean;
   fishStats:Record<string,FishStat>;
   discoveredTreasures:string[];
@@ -26,6 +29,7 @@ export interface SaveData {
   pendingAchievementIds:string[];
   coolerStickerTier:number;
   harborStickerCount:number;
+  bobberStyleId:string;
   boat:BoatProgress;
   unlockedLocationIds:FishingLocationId[];
   completedLocationIds:FishingLocationId[];
@@ -47,8 +51,8 @@ const freshLocationProgress=():Record<FishingLocationId,LocationProgress>=>({
 });
 
 const fresh=():SaveData=>({
-  version:7,coins:0,xp:0,tutorialComplete:false,underwaterControlsSeen:false,muted:false,fishStats:{},discoveredTreasures:[],
-  equipment:{line:0,reel:0,basket:0,bait:0},activeQuests:[],questCycle:0,completedQuestIds:[],achievementIds:[],pendingAchievementIds:[],coolerStickerTier:0,harborStickerCount:0,
+  version:9,coins:0,xp:0,tutorialComplete:false,underwaterControlsSeen:false,hubIntroStep:0,castTutorialSeen:false,muted:false,fishStats:{},discoveredTreasures:[],
+  equipment:{line:0,reel:0,basket:0,bait:0},activeQuests:[],questCycle:0,completedQuestIds:[],achievementIds:[],pendingAchievementIds:[],coolerStickerTier:0,harborStickerCount:0,bobberStyleId:'classic',
   boat:{investedCoins:0,unlocked:false},unlockedLocationIds:['sunny-pier'],completedLocationIds:[],lastLocationId:'sunny-pier',locationProgress:freshLocationProgress(),claimedLevelRewards:[1]
 });
 
@@ -58,11 +62,11 @@ function equipmentLevel(value:unknown){return Math.min(EQUIPMENT_COSTS.length,Ma
 export class SaveService {
   static readonly key='pocket-pier-save';
 
-  static load(storage:Pick<Storage,'getItem'>=localStorage):SaveData{
+  static load(storage:Pick<Storage,'getItem'>=PortalBridge.storage()):SaveData{
     try{
       const value=JSON.parse(storage.getItem(this.key)??'null');
       if(value?.version===1){const xp=Math.max(0,finite(value.xp)),currentLevel=this.levelProgress(xp).level;return {...fresh(),coins:finite(value.coins),xp,tutorialComplete:!!value.tutorialComplete,muted:!!value.muted,claimedLevelRewards:Array.from({length:currentLevel},(_,index)=>index+1)};}
-      if(value?.version!==2&&value?.version!==3&&value?.version!==4&&value?.version!==5&&value?.version!==6&&value?.version!==7)return fresh();
+      if(value?.version!==2&&value?.version!==3&&value?.version!==4&&value?.version!==5&&value?.version!==6&&value?.version!==7&&value?.version!==8&&value?.version!==9)return fresh();
       const base=fresh();
       const unlockedLocationIds=this.locationIds(value.unlockedLocationIds,true);
       const lastLocationId=this.locationId(value.lastLocationId);
@@ -71,7 +75,8 @@ export class SaveService {
         ?[...new Set([1,...value.claimedLevelRewards.filter((level:unknown)=>Number.isInteger(level)&&finite(level)>=2&&finite(level)<=LEVEL_THRESHOLDS.length)])]
         :Array.from({length:currentLevel},(_,index)=>index+1);
       return {
-        ...base,...value,version:7,coins:Math.max(0,finite(value.coins)),xp,underwaterControlsSeen:!!value.underwaterControlsSeen,
+        ...base,...value,version:9,coins:Math.max(0,finite(value.coins)),xp,underwaterControlsSeen:!!value.underwaterControlsSeen,
+        hubIntroStep:Math.min(3,Math.max(0,Math.floor(finite(value.hubIntroStep,value.tutorialComplete?3:0)))),castTutorialSeen:!!value.castTutorialSeen||!!value.tutorialComplete,
         fishStats:value.fishStats&&typeof value.fishStats==='object'?value.fishStats:{},
         discoveredTreasures:Array.isArray(value.discoveredTreasures)?[...new Set(value.discoveredTreasures.filter((x:unknown)=>typeof x==='string'))]:[],
         equipment:{
@@ -84,6 +89,7 @@ export class SaveService {
         achievementIds:Array.isArray(value.achievementIds)?value.achievementIds:[],
         pendingAchievementIds:Array.isArray(value.pendingAchievementIds)?value.pendingAchievementIds:[],
         harborStickerCount:Math.min(3,Math.max(0,Math.floor(finite(value.harborStickerCount)))),
+        bobberStyleId:typeof value.bobberStyleId==='string'?value.bobberStyleId:'classic',
         boat:{investedCoins:Math.min(BOAT_REPAIR_TOTAL,Math.max(0,finite(value.boat?.investedCoins))),unlocked:!!value.boat?.unlocked},
         unlockedLocationIds,
         completedLocationIds:this.locationIds(value.completedLocationIds,false),
@@ -93,7 +99,7 @@ export class SaveService {
     }catch{return fresh()}
   }
 
-  static save(data:SaveData,storage:Pick<Storage,'setItem'>=localStorage){storage.setItem(this.key,JSON.stringify(data))}
+  static save(data:SaveData,storage:Pick<Storage,'setItem'>=PortalBridge.storage()){storage.setItem(this.key,JSON.stringify(data))}
 
   private static locationIds(value:unknown,includeSunny:boolean){
     const allowed:FishingLocationId[]=['sunny-pier','rocky-cove','moonlit-trench'];

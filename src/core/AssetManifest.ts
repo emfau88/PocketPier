@@ -73,6 +73,8 @@ export const LOCATION_ASSETS:Record<FishingLocationId,GameAsset[]>={
     image('fish-kelp-wrasse',new URL('../assets/runtime/fish_kelp_wrasse.webp',import.meta.url)),
     image('fish-tide-mackerel',new URL('../assets/runtime/fish_tide_mackerel.webp',import.meta.url)),
     image('fish-ember-rockfish',new URL('../assets/runtime/fish_ember_rockfish.webp',import.meta.url)),
+    image('fish-pebble-goby',new URL('../assets/runtime/fish_pebble_goby.webp',import.meta.url)),
+    image('fish-storm-snapper',new URL('../assets/runtime/fish_storm_snapper.webp',import.meta.url)),
     image('treasure-barnacle-bell',new URL('../assets/runtime/treasure_barnacle_bell.webp',import.meta.url)),
     image('treasure-lost-spyglass',new URL('../assets/runtime/treasure_lost_spyglass.webp',import.meta.url)),
     image('treasure-sea-glass-charm',new URL('../assets/runtime/treasure_sea_glass_charm.webp',import.meta.url))
@@ -83,6 +85,8 @@ export const LOCATION_ASSETS:Record<FishingLocationId,GameAsset[]>={
     image('fish-lantern-fin',new URL('../assets/runtime/fish_lantern_fin.webp',import.meta.url)),
     image('fish-midnight-eel',new URL('../assets/runtime/fish_midnight_eel.webp',import.meta.url)),
     image('fish-royal-starfin',new URL('../assets/runtime/fish_royal_starfin.webp',import.meta.url)),
+    image('fish-velvet-lantern',new URL('../assets/runtime/fish_velvet_lantern.webp',import.meta.url)),
+    image('fish-crescent-ray',new URL('../assets/runtime/fish_crescent_ray.webp',import.meta.url)),
     image('treasure-glow-crystal',new URL('../assets/runtime/treasure_glow_crystal.webp',import.meta.url)),
     image('treasure-captain-locket',new URL('../assets/runtime/treasure_captain_locket.webp',import.meta.url)),
     image('treasure-ancient-idol',new URL('../assets/runtime/treasure_ancient_idol.webp',import.meta.url))

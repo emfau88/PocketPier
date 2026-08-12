@@ -5,6 +5,7 @@ export type RenderScale=1|1.5|2;
 export interface RenderMetrics { scale:RenderScale;width:number;height:number }
 export interface SafeAreaInsets { top:number;right:number;bottom:number;left:number }
 export interface ViewportRect { left:number;top:number;right:number;bottom:number }
+export interface VisibleGameBounds extends ViewportRect { width:number;height:number;centerX:number;centerY:number }
 
 export function selectRenderScale(viewportWidth:number,viewportHeight:number,devicePixelRatio:number,coarsePointer:boolean):RenderScale{
   const fitScale=Math.min(viewportWidth/GAME_WIDTH,viewportHeight/GAME_HEIGHT);
@@ -53,6 +54,15 @@ export function safeAreaInsets(scene:Phaser.Scene):SafeAreaInsets{
     top:(crop.top+px('--safe-area-top'))*yScale,right:(crop.right+px('--safe-area-right'))*xScale,
     bottom:(crop.bottom+px('--safe-area-bottom'))*yScale,left:(crop.left+px('--safe-area-left'))*xScale
   };
+}
+
+export function visibleGameBounds(scene:Phaser.Scene):VisibleGameBounds{
+  const safe=safeAreaInsets(scene),left=safe.left,top=safe.top,right=GAME_WIDTH-safe.right,bottom=GAME_HEIGHT-safe.bottom;
+  return {left,top,right,bottom,width:Math.max(1,right-left),height:Math.max(1,bottom-top),centerX:(left+right)/2,centerY:(top+bottom)/2};
+}
+
+export function scaleToVisibleBounds(bounds:Pick<VisibleGameBounds,'width'|'height'>,contentWidth:number,contentHeight:number,maxScale=1){
+  return Math.min(maxScale,bounds.width/contentWidth,bounds.height/contentHeight);
 }
 
 export function compactViewport(scene:Phaser.Scene){

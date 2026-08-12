@@ -1,6 +1,6 @@
 # Pocket Pier Release Roadmap
 
-Stand: 2026-08-09  
+Stand: 2026-08-12
 Zielplattformen: Desktop-Browser, Landscape-Mobile und CrazyGames  
 Leitlinie: Erst technische Stabilitaet, dann Progression und Gameplay, danach Content-Produktion und Portal-Release.
 
@@ -21,7 +21,7 @@ Leitlinie: Erst technische Stabilitaet, dann Progression und Gameplay, danach Co
 | Runtime-Bilddaten | 29,95 MB PNG im Preload | WebP-Runtime-Assets und gestuftes Laden | 1,36 MB WebP fuer alle 42 Bilder |
 | ungepackte RGBA-Texturdaten | ca. 177 MB | deutlich reduzieren, insbesondere bei UI-Sprites | 49,15 MB fuer das gesamte Runtime-Set |
 | Runtime-Audio | 2,26 MB WAV | browserkompatibel komprimieren | 0,17 MB AAC/M4A, 92,4 % kleiner |
-| automatisierte Tests | 20 | bestehende Tests plus Rendering-/Asset-Tests | 24 bestanden |
+| automatisierte Tests | 20 | bestehende Tests plus Rendering-/Asset-Tests | 37 bestanden |
 | Desktop Full HD | funktional, Texte scharf | visuell stabil | 1920x1080 internes Canvas, visuell abgenommen |
 | Mobile Landscape | funktional | gut lesbar und sicher bedienbar | 800x450-Klasse abgenommen, internes Canvas 960x540 |
 | Mobile Portrait | stark verkleinert | Landscape-Konfiguration plus Drehhinweis | blockierender Drehhinweis bis 900 px Breite |
@@ -123,51 +123,54 @@ Ergebnis Phase 5: Die drei Gebiete besitzen nun eigenstaendige Fischgrafiken und
 
 ### Phase 6 - Langzeitinhalte
 
-- [ ] Job-Pool auf etwa 12 bis 18 abwechslungsreiche Aufgaben erweitern.
-- [ ] Mindestens 10 bis 15 gebietsbezogene Badges bereitstellen.
-- [ ] Gebietsfortschritt und Sammlungsbelohnungen darstellen.
-- [ ] Kosmetische Belohnungen wie Bobber, Hut, Bootflagge und Sticker ergaenzen.
-- [ ] Completion-Bedingungen korrekt an konkrete Gebiete koppeln.
+- [x] Job-Pool auf etwa 12 bis 18 abwechslungsreiche Aufgaben erweitern.
+- [x] Mindestens 10 bis 15 gebietsbezogene Badges bereitstellen.
+- [x] Gebietsfortschritt und Sammlungsbelohnungen darstellen.
+- [x] Kosmetische Belohnungen als Bobber-Stile und Hafen-/Cooler-Sticker ergaenzen.
+- [x] Completion-Bedingungen korrekt an konkrete Gebiete koppeln.
+
+Ergebnis Phase 6: 15 manuell abholbare Harbor Jobs, 13 sichtbare Badges mit Fortschritt, 16 Fischarten, 12 Schaetze und vier ueber Badges freischaltbare Bobber-Stile. Rocky Cove und Moonlit Trench besitzen nun je fuenf statt drei Fischarten. Sammlungs-, Gebiets- und Gesamtabschlussbedingungen werten ausschliesslich die korrekten Gebiete aus.
 
 ### Phase 7 - Audio, Feedback und Onboarding
 
 - [ ] Hafen-, Unterwasser- und Menue-Ambience integrieren.
 - [ ] Getrennte Musik-, SFX- und Mute-Einstellungen anbieten.
-- [ ] Visuelles, ueberspringbares Erstspieler-Onboarding umsetzen.
-- [ ] Fang-, Rare-, Level-up-, Boots- und Gebietsbelohnungen klar inszenieren.
+- [x] Visuelles, ueberspringbares Erstspieler-Onboarding umsetzen.
+- [x] Fang-, Rare-, Level-up-, Boots- und Gebietsbelohnungen klar inszenieren.
 - [ ] iOS-Audio nach Unterbrechungen sicher fortsetzen.
 
 ## Milestone C - Portal Ready
 
 ### Phase 8 - CrazyGames SDK und Cloud Save
 
-- [ ] HTML5-v3-SDK hinter `PortalBridge` integrieren.
-- [ ] Loading- und Gameplay-Start/Stop-Ereignisse korrekt melden.
-- [ ] CrazyGames Data Module mit lokaler Gast-Fallback-Speicherung integrieren.
-- [ ] Save-Konflikte und Migration zwischen lokalem und Cloud-Stand behandeln.
-- [ ] Systeminfo fuer Geraet, Sprache, App und Plattform-Mute nutzen.
-- [ ] Midgame- und Rewarded-Ads portalregelkonform integrieren.
-- [ ] Ad-Fehler, Pause, Interaktionssperre und Audio sauber behandeln.
+- [x] HTML5-v3-SDK hinter `PortalBridge` integrieren.
+- [x] Loading- und Gameplay-Start/Stop-Ereignisse korrekt melden.
+- [x] CrazyGames Data Module mit lokaler Gast-Fallback-Speicherung integrieren.
+- [x] Lokale Spielstaende bei leerem Cloud-Slot einmalig migrieren.
+- [x] Systeminfo fuer Geraet, Sprache und App-Kontext erfassen.
+- [x] Midgame- und Rewarded-Ad-Schnittstellen mit Basic-Launch-Fallback integrieren.
+- [x] Ad-Fehler, Pause und Interaktionssperre behandeln.
+- [!] Plattform-Mute sowie Ad-Mute/Unmute bleiben bewusst im ausgesparten Audio-Paket.
 
 ## Milestone D - Release Candidate
 
 ### Phase 9 - Qualitaetssicherung und Balancing
 
-- [ ] Logiktests fuer Progression, Economy, Quests, Badges und Save-Migration erweitern.
+- [x] Logiktests fuer Progression, Economy, Quests, Badges und Save-Migration erweitern.
 - [ ] End-to-End-Tests fuer einen kompletten Spielerpfad ergaenzen.
 - [ ] Visuelle Regression bei allen Zielaufloesungen etablieren.
 - [ ] Chrome, Edge, Safari/iOS, Android und Chromebook pruefen.
 - [ ] 60-, 120-, 144- und 165-Hz-Verhalten pruefen.
-- [ ] Zeit bis Upgrade, Gebietsfreischaltung und Completion balancieren.
+- [x] Zeit bis Upgrade, Gebietsfreischaltung und Completion balancieren.
 
 ## Milestone E - Basic Launch
 
 ### Phase 10 - Store-Material und Einreichung
 
-- [ ] Cover in 1920x1080, 800x1200 und 800x800 erstellen.
+- [x] Cover in 1920x1080, 800x1200 und 800x800 erstellen.
 - [ ] Preview-Video erstellen.
-- [ ] Englische Beschreibung, Steuerung und Featureliste verfassen.
-- [ ] PEGI-12-, Datenschutz- und Portalmetadaten pruefen.
+- [x] Englische Beschreibung, Steuerung und Featureliste verfassen.
+- [x] PEGI-12-, Datenschutz- und Portalmetadaten als Einreichungspaket vorbereiten.
 - [ ] CrazyGames Preview Tool vollstaendig durchlaufen.
 - [ ] Basic Launch ohne aktive Monetarisierung veroeffentlichen.
 
@@ -182,6 +185,22 @@ Ergebnis Phase 5: Die drei Gebiete besitzen nun eigenstaendige Fischgrafiken und
 - [ ] Cover bei groesseren Content-Updates erneuern.
 
 ## Aenderungsprotokoll
+
+### 2026-08-12
+
+- Safe-Area- und responsive Layoutlogik auf Menue, Hafen-HUD, Zusammenfassung und alle fuenf Hub-Dialoge ausgeweitet.
+- Ersten Cast als fehlertolerante Einfuehrung verlangsamt und den gruenen Timing-Bereich eindeutig als freiwilligen Bonus erklaert.
+- Dreistufiges Hafen-Onboarding sowie dauerhaft erkennbare, beschriftete Klickziele und kontextuelle Aufmerksamkeitspunkte fuer Jobs, Badges, Upgrades und Boot umgesetzt.
+- CrazyGames HTML5-v3-SDK, Loading-/Gameplay-Events, Data-Module-Speicherung, Cloud-Migration, Systeminfo, Context, Completion, Happytime und ausfallsichere Ad-Schnittstelle hinter `PortalBridge` integriert.
+- Save-Schema auf Version 9 migriert; neuer Onboarding-Status und freischaltbare Bobber-Stile bleiben auch in alten Spielstaenden kompatibel.
+- Job-Pool auf 15 und Badge-Pool auf 13 erweitert; alle Badges zeigen nun Name, Ziel und Fortschritt und lassen sich manuell abholen.
+- Rocky Cove und Moonlit Trench um je zwei neue ImageGen-Fischarten erweitert; Gebiets- und Badge-Zuordnung per Tests abgesichert.
+- Hauptmenue, Rocky Cove und Moonlit Trench mit hochaufloesenden Runtime-Hintergruenden ausgestattet; Text bleibt als hochaufloesendes Phaser-Textobjekt gerendert.
+- Trip Summary mit Fangbildern, Rekorden, vier Meisterschaftsbalken, Level-/Coin-/XP-Flugfeedback und Gebietserfolgen aufgewertet.
+- Phaser in einen eigenen gecachten Build-Chunk getrennt; Runtime-Build bleibt mit ca. 3,9 MB und 67 Dateien weit unter den Portalgrenzen.
+- Drei konsistente Store-Cover in 1920x1080, 800x1200 und 800x800 sowie reproduzierbare Cover-Pipeline erstellt.
+- CrazyGames-Submission-Paket mit englischer Beschreibung, Steuerung, Metadaten, Preview-Shotlist und Portal-Checkliste dokumentiert.
+- Automatisierte Suite auf 37 bestandene Tests erweitert; Produktions-Build erfolgreich.
 
 ### 2026-08-09
 

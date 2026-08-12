@@ -10,16 +10,16 @@ The game runs directly in a modern desktop or mobile browser. Mobile play is des
 
 ## Highlights
 
-- Three fishing areas: Sunny Pier, Rocky Cove, and Moonlit Trench
+- Three replayable fishing areas with 16 fish species and 12 treasures
 - Area-specific fish, treasures, movement patterns, currents, obstacles, and visibility rules
 - Three-dive fishing trips with coins, XP, level rewards, records, and discovery progress
-- Harbor Jobs, claimable badges, equipment upgrades, and staged boat repairs
-- Fishbook, treasure collection, fishing-spot selection, and persistent local saves
+- 15 Harbor Jobs, 13 claimable badges, 15 player levels, equipment upgrades, and staged boat repairs
+- Fishbook, treasure collection, unlockable bobber styles, and local/CrazyGames cloud saves
 - Optional Perfect Cast timing bonus with clear reward feedback
 - Mobile-first underwater controls with a floating analog joystick
 - Color-coded remaining-line meter, basket capacity, catch progress, and Reel In control
 - Responsive Full-HD rendering, device safe areas, touch controls, keyboard controls, and reduced-motion support
-- Optimized local WebP and M4A assets with no external runtime asset requests
+- Optimized runtime artwork, staged loading, and a CrazyGames HTML5 v3 integration with safe local fallback
 
 ## Controls
 
@@ -53,6 +53,8 @@ npm run build
 
 `npm test` runs the gameplay, progression, save-migration, responsive-layout, and touch-control regression suite. `npm run build` performs the TypeScript check and creates the production bundle in `dist/`.
 
+The current release suite contains 37 deterministic tests. The built game is about 3.9 MB across 67 files and remains well inside the CrazyGames mobile download limits.
+
 ## Project structure
 
 ```text
@@ -73,3 +75,5 @@ https://emfau88.github.io/PocketPier/
 ## Roadmap
 
 The implementation history, completed milestones, and remaining portal-readiness work are tracked in [docs/RELEASE_ROADMAP.md](docs/RELEASE_ROADMAP.md).
+
+CrazyGames descriptions, controls, covers, preview-video shot list, compliance notes, and the final portal checklist are collected in [docs/store/CRAZYGAMES_SUBMISSION.md](docs/store/CRAZYGAMES_SUBMISSION.md).

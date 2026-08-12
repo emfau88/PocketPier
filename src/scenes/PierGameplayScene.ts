@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { AudioService } from '../core/AudioService';
 import { COLORS, TRIP_CASTS } from '../core/GameConfig';
 import { PortalBridge } from '../core/PortalBridge';
-import { compactViewport, configureSceneRendering, safeAreaInsets } from '../core/RenderQuality';
+import { compactViewport, configureSceneRendering, safeAreaInsets, scaleToVisibleBounds, visibleGameBounds } from '../core/RenderQuality';
 import { BOAT_REPAIR_COSTS, EQUIPMENT_COSTS, SaveService, type EquipmentId } from '../core/SaveService';
 import { ACHIEVEMENTS, QuestService, questById } from '../gameplay/QuestService';
 import { fishFlipXForDirection, type Fish } from '../gameplay/Fish';
@@ -12,6 +12,7 @@ import { TripState } from '../gameplay/TripState';
 import { FISHING_LOCATIONS, locationById, type FishingLocation, type FishingLocationId } from '../gameplay/FishingLocation';
 import { castQualityFromMarker, currentVector, obstaclesForLocation, pointHitsObstacle, treasureChance, treasureSpawnPoint } from '../gameplay/UnderwaterEnvironment';
 import { joystickKnobPosition, virtualJoystickVector } from '../gameplay/TouchControls';
+import { bobberStyle, cycleBobberStyle, unlockedBobberStyles } from '../gameplay/Cosmetics';
 
 type Phase='CAST'|'FLIGHT'|'UNDERWATER'|'RETRACTING'|'RESULT';
 type Target={fish:Fish;sprite:Phaser.GameObjects.Image;aura:Phaser.GameObjects.Arc;badge:Phaser.GameObjects.Text;slots:number;capture:number;direction:number;speed:number;baseY:number;phase:number;lastTouchAt:number};
@@ -34,6 +35,7 @@ export class PierGameplayScene extends Phaser.Scene {
   private touchControls=false;private joystickPointerId?:number;private joystickOrigin=new Phaser.Math.Vector2();private joystickVector=new Phaser.Math.Vector2();private joystickBase?:Phaser.GameObjects.Arc;private joystickKnob?:Phaser.GameObjects.Arc;private controlOnboarding?:Phaser.GameObjects.Container;
   private safeTop=0;
   private surfaceClouds:{sprite:Phaser.GameObjects.Image;speed:number}[]=[];
+  private hubTutorial?:Phaser.GameObjects.Container;private firstCastAssist=false;
   private cooler!:Phaser.GameObjects.Image;private tacklebox!:Phaser.GameObjects.Image;private boatSprite!:Phaser.GameObjects.Image;private boatZone!:Phaser.GameObjects.Zone;private noticeBoard!:Phaser.GameObjects.Zone;private spotsZone?:Phaser.GameObjects.Zone;private collectionModal?:Phaser.GameObjects.Container;private tackleModal?:Phaser.GameObjects.Container;private jobsModal?:Phaser.GameObjects.Container;private boatModal?:Phaser.GameObjects.Container;private spotsModal?:Phaser.GameObjects.Container;private modalOpen=false;
   private touchingTarget?:Target;
   private currentTreasureId?:TreasureId;
@@ -45,13 +47,15 @@ export class PierGameplayScene extends Phaser.Scene {
     configureSceneRendering(this);
     this.reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     this.touchControls=window.matchMedia?.('(pointer: coarse)').matches ?? false;
-    PortalBridge.gameplayStart();this.surface=this.add.container(0,0);this.drawSurface();
+    const contextSave=SaveService.load(),contextLevel=SaveService.levelProgress(contextSave.xp).level;
+    PortalBridge.setGameContext({area:this.location.name,level:String(contextLevel),coins:String(contextSave.coins)});PortalBridge.gameplayStart();this.surface=this.add.container(0,0);this.drawSurface();
     this.title=this.add.text(480,28,'',{fontSize:'25px',fontStyle:'bold',color:'#fff6dc',stroke:'#153a4a',strokeThickness:6}).setOrigin(.5).setDepth(100);
     this.help=this.add.text(480,500,'',{fontSize:'20px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#fff6dc',align:'center'}).setPadding(14,9).setOrigin(.5).setDepth(100);
     this.meter=this.add.graphics().setDepth(90);this.castHint=this.add.text(480,92,'TAP TO CAST · GREEN = BONUS',{fontSize:'12px',fontStyle:'bold',color:'#fff6dc',stroke:'#153a4a',strokeThickness:4}).setOrigin(.5).setDepth(100).setVisible(false);
     this.keys=this.input.keyboard?.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E,SPACE') as Record<string,Phaser.Input.Keyboard.Key>;
     this.input.on('pointerdown',(p:Phaser.Input.Pointer)=>{
       AudioService.unlock();
+      if(this.hubTutorial?.active)return;
       if(this.modalOpen)return;
       if(this.phase==='CAST'&&this.cooler?.getBounds().contains(p.worldX,p.worldY)){AudioService.bookOpen();this.openCollection('fish');return}
       if(this.phase==='CAST'&&this.tacklebox?.getBounds().contains(p.worldX,p.worldY)){AudioService.tackleOpen();this.openTackleBox();return}
@@ -63,7 +67,7 @@ export class PierGameplayScene extends Phaser.Scene {
     });
     this.input.on('pointermove',(p:Phaser.Input.Pointer)=>{if(this.touchControls&&this.joystickPointerId!==undefined)this.updateTouchSteering(p);else if(this.pointerSteering)this.hookTarget.set(p.worldX,p.worldY)});
     this.input.on('pointerup',(p:Phaser.Input.Pointer)=>{this.pointerSteering=false;this.endTouchSteering(p)});
-    this.layoutSafeArea();this.events.on('render-quality-changed',()=>this.layoutSafeArea());this.beginCast();
+    this.layoutSafeArea();this.events.on('render-quality-changed',()=>this.layoutSafeArea());this.beginCast();this.showHubTutorial();
   }
   private drawSurface(){
     const bg=this.add.image(480,270,'bg-pier-remaster').setDisplaySize(960,540);
@@ -85,13 +89,25 @@ export class PierGameplayScene extends Phaser.Scene {
     this.noticeBoard=this.add.zone(73,270,92,125).setInteractive({useHandCursor:true}).setDepth(6);
     this.cooler=this.add.image(160,420,'hub-cooler').setDisplaySize(82,59).setInteractive({useHandCursor:true}).setDepth(4);
     this.tacklebox=this.add.image(225,448,'hub-tacklebox-closed').setDisplaySize(82,59).setInteractive({useHandCursor:true}).setDepth(4);
-    const save=SaveService.load(),stickers:Phaser.GameObjects.Arc[]=[];
+    const save=SaveService.load(),stickers:Phaser.GameObjects.Arc[]=[];QuestService.ensureActive(save);
     if(SaveService.isLocationUnlocked(save,this.location.id)&&save.lastLocationId!==this.location.id){save.lastLocationId=this.location.id;SaveService.save(save)}
     this.boatSprite=this.add.image(620,315,'hub-boat-states',this.boatFrame(save)).setDisplaySize(180,180).setOrigin(.5,this.boatOriginY(save)).setDepth(4);
     this.boatZone=this.add.zone(620,335,175,82).setInteractive({useHandCursor:true}).setDepth(6);
     const stickerColors=[0xffd166,0xef6b4a,0x69d6c5];
     for(let i=0;i<Math.min(3,save.coolerStickerTier+save.harborStickerCount);i++)stickers.push(this.add.circle(141+i*11,426,4,stickerColors[i]).setStrokeStyle(1,0xfff6dc).setDepth(5));
     this.angler=this.add.image(330,350,'angler-chair-perspective').setDisplaySize(315,210).setDepth(5);
+    const hotspotCues=[
+      this.add.text(160,384,'FISHBOOK',{fontSize:'10px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#153a4a'}).setPadding(6,3).setOrigin(.5).setDepth(7),
+      this.add.text(225,414,'TACKLE',{fontSize:'10px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#153a4a'}).setPadding(6,3).setOrigin(.5).setDepth(7),
+      this.add.text(620,382,SaveService.boatStage(save)>=3?'BOAT':'REPAIR BOAT',{fontSize:'10px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#153a4a'}).setPadding(6,3).setOrigin(.5).setDepth(7)
+    ];
+    const jobReady=save.activeQuests.some(active=>{const quest=questById(active.id);return !!quest&&active.progress>=quest.target})||save.pendingAchievementIds.length>0;
+    const gearReady=(Object.keys(save.equipment) as EquipmentId[]).some(id=>{const cost=SaveService.nextEquipmentCost(save,id);return cost!==undefined&&save.coins>=cost});
+    const boatCost=SaveService.nextBoatRepairCost(save),attentionDots=[
+      ...(jobReady?[this.add.circle(91,207,7,COLORS.coral).setStrokeStyle(2,COLORS.cream).setDepth(8)]:[]),
+      ...(gearReady?[this.add.circle(258,423,7,COLORS.coral).setStrokeStyle(2,COLORS.cream).setDepth(8)]:[]),
+      ...(boatCost!==undefined&&save.coins>=boatCost?[this.add.circle(675,292,7,COLORS.coral).setStrokeStyle(2,COLORS.cream).setDepth(8)]:[])
+    ];
     const spotCue:Phaser.GameObjects.GameObject[]=[];
     if(save.unlockedLocationIds.length>1){
       this.angler.setInteractive({useHandCursor:true}).on('pointerover',()=>this.angler.setTint(0xfff2d4)).on('pointerout',()=>this.angler.clearTint());
@@ -103,10 +119,11 @@ export class PierGameplayScene extends Phaser.Scene {
     }else this.spotsZone=undefined;
     const frontPostRipples=this.makePostRipples(true);
     this.bobber=this.add.image(585,315,'bobber-basic').setDisplaySize(52,54).setVisible(false).setDepth(8);
+    this.bobber.setTint(bobberStyle(save).tint);
     this.locationText=this.add.text(22,22,this.location.name.toUpperCase(),{fontSize:'18px',fontStyle:'bold',color:'#fff6dc'}).setDepth(11);
     const level=SaveService.levelProgress(save.xp),xpLabel=level.maxed?`${save.xp} XP`:`${level.current}/${level.needed} XP`;
     this.progressText=this.add.text(938,22,`LEVEL ${level.level}   ${xpLabel}   COINS ${save.coins}`,{fontSize:'15px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(1,0).setDepth(11);
-    this.surface.add([bg,cloudA,cloudB,cloudC,foregroundOccluder,shade,...rearPostRipples,jobsNoticeArt,this.noticeBoard,this.cooler,this.tacklebox,this.boatSprite,this.boatZone,...stickers,this.angler,...spotCue,...frontPostRipples,this.bobber,this.locationText,this.progressText]);
+    this.surface.add([bg,cloudA,cloudB,cloudC,foregroundOccluder,shade,...rearPostRipples,jobsNoticeArt,this.noticeBoard,this.cooler,this.tacklebox,this.boatSprite,this.boatZone,...stickers,this.angler,...hotspotCues,...attentionDots,...spotCue,...frontPostRipples,this.bobber,this.locationText,this.progressText]);
     if(!this.reducedMotion){
       this.scheduleSurfaceGull(true);
     }
@@ -125,13 +142,15 @@ export class PierGameplayScene extends Phaser.Scene {
   }
   private beginCast(){
     this.clearOverlay();this.clearMoonlitVisibility();this.surface.setVisible(true);this.underwater?.destroy(true);this.underwater=undefined;this.phase='CAST';this.marker=0;this.markerDir=1;this.inputLockedUntil=this.time.now+250;
-    this.title.setText(`DIVE ${TRIP_CASTS-this.trip.castsLeft+1} OF ${TRIP_CASTS}`);this.help.setVisible(false);this.bobber.setVisible(false);this.castHint.setVisible(true);this.drawCastMeter();
+    const save=SaveService.load();this.firstCastAssist=!save.castTutorialSeen&&this.trip.castsLeft===TRIP_CASTS;
+    this.title.setText(`DIVE ${TRIP_CASTS-this.trip.castsLeft+1} OF ${TRIP_CASTS}`);this.help.setVisible(false);this.bobber.setVisible(false);this.castHint.setText(this.firstCastAssist?'TAP ANYWHERE TO CAST  •  GREEN ONLY ADDS A BONUS':'TAP TO CAST  •  GREEN = BONUS').setVisible(true);this.drawCastMeter();
   }
   private press(){
     if(this.modalOpen||this.time.now<this.inputLockedUntil)return;AudioService.unlock();
     if(this.phase==='CAST')this.cast();else if(this.phase==='RESULT')this.nextDive();
   }
   private cast(){
+    const save=SaveService.load();if(!save.castTutorialSeen){save.castTutorialSeen=true;SaveService.save(save)}
     this.castQuality=castQualityFromMarker(this.marker);this.trip.useCast();this.phase='FLIGHT';this.hideCastMeter();AudioService.cast();this.help.setText('CASTING…');if(this.castQuality>=.88){this.showToast('PERFECT CAST!');this.showPerfectCastFx()}else if(this.castQuality>=.58)this.showToast('GOOD CAST');
     this.bobber.setDisplaySize(52,54);const bobberScaleX=this.bobber.scaleX,bobberScaleY=this.bobber.scaleY;
     this.bobber.setVisible(true).setPosition(555,278).setScale(bobberScaleX*.5,bobberScaleY*.5);
@@ -161,7 +180,7 @@ export class PierGameplayScene extends Phaser.Scene {
     this.reelBg=this.add.rectangle(860,39,150,48,0xef6b4a).setStrokeStyle(3,reelAccent).setInteractive({useHandCursor:true}).setDepth(60);
     this.reelTx=this.add.text(860,39,`REEL IN · T${this.reelLevel}`,{fontSize:'16px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(.5).setDepth(61);
     this.reelBg.on('pointerdown',()=>this.startRetract());
-    const hint=this.location.id==='rocky-cove'?'CURRENT PUSHES RIGHT • KELP BLOCKS THE HOOK':this.location.id==='moonlit-trench'?'KEEP THE HOOK LIGHT CLOSE • DEEP FISH FLEE':'MOVE THE HOOK • STAY ON A FISH • REEL IN ANYTIME';
+    const controlHint=this.touchControls?'HOLD & DRAG TO STEER':'DRAG THE MOUSE OR USE WASD / ARROWS',hint=this.location.id==='rocky-cove'?`${controlHint}  •  CURRENT PUSHES RIGHT`:this.location.id==='moonlit-trench'?`${controlHint}  •  KEEP THE HOOK LIGHT CLOSE`:`${controlHint}  •  STAY ON A FISH  •  REEL IN ANYTIME`;
     this.diveHint=this.add.text(480,505,hint,{fontSize:'16px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#fff6dc'}).setPadding(10,6).setOrigin(.5).setDepth(60);
     this.spawnTargets(c);this.spawnTreasure(c);if(this.location.id==='moonlit-trench')this.setupMoonlitVisibility(c);c.add([this.lineHud,this.basketText,this.reelBg,this.reelTx,this.diveHint]);if(this.touchControls&&!save.underwaterControlsSeen)this.showTouchOnboarding(save,c);c.sort('depth');this.refreshHud();this.layoutSafeArea();
     this.time.delayedCall(4500,()=>this.diveHint?.setVisible(false));PortalBridge.submitAnalyticsEvent('underwater_start');
@@ -214,6 +233,7 @@ export class PierGameplayScene extends Phaser.Scene {
   private clearMoonlitVisibility(){this.moonlitShade?.destroy();this.moonlitMaskSource?.destroy();this.moonlitGlow?.destroy();this.moonlitShade=undefined;this.moonlitMaskSource=undefined;this.moonlitGlow=undefined;}
   private beginTouchSteering(pointer:Phaser.Input.Pointer){
     if(!this.underwater||(this.joystickPointerId!==undefined&&this.joystickPointerId!==pointer.id))return;
+    const save=SaveService.load();if(!save.underwaterControlsSeen){save.underwaterControlsSeen=true;SaveService.save(save)}
     this.dismissTouchOnboarding();this.joystickPointerId=pointer.id;const safe=safeAreaInsets(this);
     this.joystickOrigin.set(Phaser.Math.Clamp(pointer.worldX,58+safe.left,902-safe.right),Phaser.Math.Clamp(pointer.worldY,105+safe.top,475-safe.bottom));
     if(!this.joystickBase?.active){
@@ -231,7 +251,6 @@ export class PierGameplayScene extends Phaser.Scene {
     if(pointer&&pointer.id!==this.joystickPointerId)return;this.joystickPointerId=undefined;this.joystickVector.set(0,0);this.joystickBase?.setVisible(false);this.joystickKnob?.setVisible(false);
   }
   private showTouchOnboarding(save:ReturnType<typeof SaveService.load>,c:Phaser.GameObjects.Container){
-    save.underwaterControlsSeen=true;SaveService.save(save);
     const panel=this.add.rectangle(480,282,500,176,0x153a4a,.94).setStrokeStyle(4,0xfff6dc,.9),title=this.add.text(480,226,'DRAG ANYWHERE TO STEER',{fontSize:'22px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(.5);
     const base=this.add.circle(350,292,39,0xfff6dc,.18).setStrokeStyle(3,0xfff6dc,.7),knob=this.add.circle(350,292,16,0xfff6dc,.86).setStrokeStyle(2,0x153a4a),copy=this.add.text(430,276,'Keep holding the finger.\nStay on a fish to catch it.',{fontSize:'15px',fontStyle:'bold',color:'#a9e5dc',lineSpacing:5}),reel=this.add.text(480,344,'REEL IN WHEN YOU ARE READY TO RETURN',{fontSize:'13px',fontStyle:'bold',color:'#ffd166'}).setOrigin(.5);
     this.controlOnboarding=this.add.container(0,0,[panel,title,base,knob,copy,reel]).setDepth(96);c.add(this.controlOnboarding);
@@ -340,6 +359,7 @@ export class PierGameplayScene extends Phaser.Scene {
   }
   private spotBadgeTexture(id:FishingLocationId){return id==='rocky-cove'?'ui-spot-rocky':id==='moonlit-trench'?'ui-spot-moonlit':'ui-spot-sunny'}
   private openFishingSpots(){
+    PortalBridge.gameplayStop();
     this.modalOpen=true;this.pointerSteering=false;this.help.setVisible(false);this.spotsModal?.destroy(true);
     const save=SaveService.load(),items:Phaser.GameObjects.GameObject[]=[],compact=compactViewport(this);
     const shade=this.add.rectangle(480,270,960,540,0x102f3d,.8).setInteractive();
@@ -347,7 +367,7 @@ export class PierGameplayScene extends Phaser.Scene {
     const map=this.add.image(480,305,'ui-fishing-spots-map').setDisplaySize(840,390).setAlpha(.22);
     const title=this.add.text(480,55,'FISHING SPOTS',{fontSize:'30px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
     const subtitle=this.add.text(480,91,'Talk to the angler whenever you want to fish somewhere else.',{fontSize:compact?'15px':'13px',fontStyle:'bold',color:'#4b6973'}).setOrigin(.5);
-    const close=this.add.text(888,55,'X',{fontSize:compact?'25px':'23px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(compact?16:12,compact?10:7).setOrigin(.5).setInteractive({useHandCursor:true});
+    const close=this.add.text(860,55,'X',{fontSize:compact?'25px':'23px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(compact?16:12,compact?10:7).setOrigin(.5).setInteractive({useHandCursor:true});
     close.on('pointerdown',()=>this.closeFishingSpots());items.push(shade,paper,map,title,subtitle,close);
     FISHING_LOCATIONS.forEach((location,index)=>{
       const x=205+index*275,unlocked=SaveService.isLocationUnlocked(save,location.id),current=location.id===this.location.id,completed=save.completedLocationIds.includes(location.id);
@@ -361,7 +381,7 @@ export class PierGameplayScene extends Phaser.Scene {
       if(unlocked){card.setInteractive({useHandCursor:true});action.setInteractive({useHandCursor:true});const choose=()=>this.chooseFishingSpot(location.id);card.on('pointerdown',choose);action.on('pointerdown',choose);}
       items.push(card,area,emblem,name,description,action);
     });
-    this.spotsModal=this.add.container(0,0,items).setDepth(220);
+    this.spotsModal=this.createResponsiveModal(items,220);
   }
   private chooseFishingSpot(id:FishingLocationId){
     AudioService.uiSelect();
@@ -371,6 +391,7 @@ export class PierGameplayScene extends Phaser.Scene {
   }
   private closeFishingSpots(playSound=true){if(playSound)AudioService.uiCancel();this.spotsModal?.destroy(true);this.spotsModal=undefined;this.finishModalClose()}
   private openCollection(tab:'fish'|'treasures'){
+    PortalBridge.gameplayStop();
     this.modalOpen=true;this.pointerSteering=false;this.help.setVisible(false);this.collectionModal?.destroy(true);
     const saved=SaveService.load(),items:Phaser.GameObjects.GameObject[]=[],compact=compactViewport(this);
     this.trip.catches.forEach(c=>SaveService.recordCatch(saved,c.fish.id,c.weight));
@@ -378,7 +399,7 @@ export class PierGameplayScene extends Phaser.Scene {
     const shade=this.add.rectangle(480,270,960,540,0x102f3d,.78).setInteractive(),paper=this.add.rectangle(480,280,850,470,0xfff6dc,.99).setStrokeStyle(8,COLORS.navy),title=this.add.text(95,62,`${this.location.name.toUpperCase()} FIELD BOOK`,{fontSize:'25px',fontStyle:'bold',color:'#153a4a'});
     const fishTab=this.add.rectangle(315,115,210,45,tab==='fish'?COLORS.coral:0xa9e5dc).setStrokeStyle(3,COLORS.navy).setInteractive({useHandCursor:true}),fishText=this.add.text(315,115,'FISH',{fontSize:'18px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
     const treasureTab=this.add.rectangle(545,115,210,45,tab==='treasures'?COLORS.coral:0xa9e5dc).setStrokeStyle(3,COLORS.navy).setInteractive({useHandCursor:true}),treasureText=this.add.text(545,115,'TREASURES',{fontSize:'18px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
-    const close=this.add.text(866,65,'X',{fontSize:compact?'26px':'24px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(compact?16:12,compact?10:7).setOrigin(.5).setInteractive({useHandCursor:true});
+    const close=this.add.text(842,65,'X',{fontSize:compact?'26px':'24px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(compact?16:12,compact?10:7).setOrigin(.5).setInteractive({useHandCursor:true});
     fishTab.on('pointerdown',()=>{AudioService.uiSelect();this.openCollection('fish')});treasureTab.on('pointerdown',()=>{AudioService.uiSelect();this.openCollection('treasures')});close.on('pointerdown',()=>this.closeCollection());
     items.push(shade,paper,title,fishTab,fishText,treasureTab,treasureText,close);
     if(this.trip.catches.length||this.trip.treasures.length)items.push(this.add.text(865,105,'CURRENT TRIP INCLUDED',{fontSize:'10px',fontStyle:'bold',color:'#ef6b4a'}).setOrigin(1,.5));
@@ -401,15 +422,29 @@ export class PierGameplayScene extends Phaser.Scene {
         items.push(card,icon,name,hint);
       });
     }
-    this.collectionModal=this.add.container(0,0,items).setDepth(220);
+    this.collectionModal=this.createResponsiveModal(items,220);
   }
   private finishModalClose(){
     this.inputLockedUntil=Math.max(this.inputLockedUntil,this.time.now+150);
-    this.modalOpen=false;
+    this.modalOpen=false;PortalBridge.gameplayStart();
     if(this.phase==='CAST')this.help.setVisible(false);
+  }
+  private showHubTutorial(){
+    const save=SaveService.load();this.hubTutorial?.destroy(true);this.hubTutorial=undefined;
+    const trips=Object.values(save.locationProgress).reduce((sum,progress)=>sum+progress.trips,0);
+    if(save.hubIntroStep>=3||trips===0)return;
+    const steps=[
+      {x:160,y:388,title:'FISHBOOK',copy:'Tap the cooler to inspect fish and treasures.'},
+      {x:225,y:416,title:'TACKLE BOX',copy:'Spend coins here to improve your equipment.'},
+      {x:73,y:238,title:'HARBOR JOBS',copy:'Complete jobs, then return to claim rewards.'}
+    ],step=steps[save.hubIntroStep]??steps[0],items:Phaser.GameObjects.GameObject[]=[];
+    const pulse=this.add.circle(step.x,step.y,45,0xffd166,.12).setStrokeStyle(4,0xffd166,.95),cardX=Phaser.Math.Clamp(step.x+205,190,760),cardY=Phaser.Math.Clamp(step.y-42,105,430),card=this.add.rectangle(cardX,cardY,330,94,0xfff6dc,.98).setStrokeStyle(4,COLORS.navy).setInteractive(),title=this.add.text(cardX,cardY-22,step.title,{fontSize:'18px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5),copy=this.add.text(cardX,cardY+5,step.copy,{fontSize:'13px',fontStyle:'bold',color:'#4b6973',align:'center',wordWrap:{width:292}}).setOrigin(.5),next=this.add.text(cardX,cardY+50,save.hubIntroStep===2?'GOT IT':'NEXT',{fontSize:'14px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(14,7).setOrigin(.5).setInteractive({useHandCursor:true});
+    items.push(pulse,card,title,copy,next);this.hubTutorial=this.add.container(0,0,items).setDepth(210);if(!this.reducedMotion)this.tweens.add({targets:pulse,scale:{from:.9,to:1.15},alpha:{from:1,to:.35},duration:900,yoyo:true,repeat:-1});
+    next.on('pointerdown',()=>{save.hubIntroStep++;SaveService.save(save);this.showHubTutorial()});
   }
   private closeCollection(){AudioService.bookClose();this.collectionModal?.destroy(true);this.collectionModal=undefined;this.finishModalClose()}
   private openTackleBox(){
+    PortalBridge.gameplayStop();
     this.modalOpen=true;this.pointerSteering=false;this.help.setVisible(false);this.tackleModal?.destroy(true);
     const saved=SaveService.load(),items:Phaser.GameObjects.GameObject[]=[],compact=compactViewport(this);
     const shade=this.add.rectangle(480,270,960,540,0x102f3d,.78).setInteractive();
@@ -417,11 +452,13 @@ export class PierGameplayScene extends Phaser.Scene {
     const title=this.add.text(95,62,'THE TACKLE BOX',{fontSize:'29px',fontStyle:'bold',color:'#153a4a'});
     const subtitle=this.add.text(95,96,'PREPARE YOUR GEAR FOR THE NEXT CATCH',{fontSize:'13px',fontStyle:'bold',color:'#4b6973'});
     const coins=this.add.text(815,78,`COINS  ${saved.coins}`,{fontSize:'16px',fontStyle:'bold',color:'#153a4a'}).setOrigin(1,.5);
-    const close=this.add.text(866,65,'X',{fontSize:compact?'26px':'24px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(compact?16:12,compact?10:7).setOrigin(.5).setInteractive({useHandCursor:true});
+    const close=this.add.text(842,65,'X',{fontSize:compact?'26px':'24px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(compact?16:12,compact?10:7).setOrigin(.5).setInteractive({useHandCursor:true});
     close.on('pointerdown',()=>this.closeTackleBox());
     const caseArt=this.add.image(245,245,'hub-tacklebox-open').setDisplaySize(270,205);
     const intro=this.add.text(245,370,'Every upgrade is gentle:\nmore comfort, never a guaranteed catch.',{fontSize:'13px',fontStyle:'bold',align:'center',color:'#153a4a',wordWrap:{width:270}}).setOrigin(.5);
-    items.push(shade,paper,title,subtitle,coins,close,caseArt,intro);
+    const style=bobberStyle(saved),styleCount=unlockedBobberStyles(saved).length,styleLabel=this.add.text(245,417,`BOBBER  ${style.name.toUpperCase()}\n${styleCount} / 4 STYLES UNLOCKED`,{fontSize:'12px',fontStyle:'bold',align:'center',color:'#153a4a'}).setOrigin(.5),styleButton=this.add.text(245,462,styleCount>1?'CHANGE STYLE':'EARN 3 BADGES',{fontSize:'12px',fontStyle:'bold',color:'#fff6dc',backgroundColor:styleCount>1?'#ef6b4a':'#71858b'}).setPadding(10,6).setOrigin(.5);
+    if(styleCount>1)styleButton.setInteractive({useHandCursor:true}).on('pointerdown',()=>{cycleBobberStyle(saved);SaveService.save(saved);this.bobber.setTint(bobberStyle(saved).tint);this.openTackleBox()});
+    items.push(shade,paper,title,subtitle,coins,close,caseArt,intro,styleLabel,styleButton);
     const cards:[string,EquipmentId,string,string][]=[
       ['line-icon','line','LINE','More range: +2 m per tier.'],
       ['reel-icon','reel','REEL','Faster hook and reel-in.'],
@@ -442,7 +479,7 @@ export class PierGameplayScene extends Phaser.Scene {
       items.push(card,icon,label,detail,tier,button);
     });
     const note=this.add.text(670,490,`Prices: ${EQUIPMENT_COSTS.join('  •  ')} coins`,{fontSize:compact?'14px':'12px',fontStyle:'bold',color:'#4b6973'}).setOrigin(.5);
-    items.push(note);this.tackleModal=this.add.container(0,0,items).setDepth(220);
+    items.push(note);this.tackleModal=this.createResponsiveModal(items,220);
   }
   private confirmEquipmentPurchase(id:EquipmentId,name:string,cost:number){
     const save=SaveService.load(),items:Phaser.GameObjects.GameObject[]=[];
@@ -456,14 +493,15 @@ export class PierGameplayScene extends Phaser.Scene {
     confirm.on('pointerdown',()=>{if(!SaveService.purchaseEquipment(save,id)){AudioService.fail();this.showToast('Not enough coins.');prompt.destroy(true);return}AudioService.purchase();SaveService.save(save);prompt.destroy(true);this.openTackleBox();this.showToast(`${name} upgraded!`)});
   }
   private closeTackleBox(){AudioService.uiCancel();this.tackleModal?.destroy(true);this.tackleModal=undefined;this.finishModalClose()}
-  private openJobs(tab:'jobs'|'badges'){
+  private openJobs(tab:'jobs'|'badges',badgePage=0){
+    PortalBridge.gameplayStop();
     this.modalOpen=true;this.pointerSteering=false;this.help.setVisible(false);this.jobsModal?.destroy(true);
     const save=SaveService.load();QuestService.ensureActive(save);SaveService.save(save);const items:Phaser.GameObjects.GameObject[]=[],compact=compactViewport(this);
     const shade=this.add.rectangle(480,270,960,540,0x102f3d,.78).setInteractive();
     const paper=this.add.rectangle(480,280,850,470,0xfff6dc,.99).setStrokeStyle(8,COLORS.navy);
     const title=this.add.text(95,62,'HARBOR JOBS',{fontSize:'29px',fontStyle:'bold',color:'#153a4a'});
     const subtitle=this.add.text(95,88,'COMPLETE TRIPS • EARN COINS, XP & STICKERS',{fontSize:'13px',fontStyle:'bold',color:'#4b6973'});
-    const close=this.add.text(866,65,'X',{fontSize:compact?'26px':'24px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(compact?16:12,compact?10:7).setOrigin(.5).setInteractive({useHandCursor:true});
+    const close=this.add.text(842,65,'X',{fontSize:compact?'26px':'24px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(compact?16:12,compact?10:7).setOrigin(.5).setInteractive({useHandCursor:true});
     close.on('pointerdown',()=>this.closeJobs());
     const jobsTab=this.add.rectangle(330,128,205,42,tab==='jobs'?COLORS.coral:0xa9e5dc).setStrokeStyle(3,COLORS.navy).setInteractive({useHandCursor:true});
     const jobsText=this.add.text(330,128,'JOBS',{fontSize:'17px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
@@ -487,18 +525,20 @@ export class PierGameplayScene extends Phaser.Scene {
         items.push(card,emblem,icon,questTitle,description,reward,amount);
       });
     }else{
-      const unlocked=new Set(save.achievementIds),pending=new Set(save.pendingAchievementIds);items.push(this.add.text(790,110,`${unlocked.size} / ${ACHIEVEMENTS.length} CLAIMED`,{fontSize:'14px',fontStyle:'bold',color:'#153a4a'}).setOrigin(1,.5));
-      ACHIEVEMENTS.forEach((achievement,index)=>{
-        const x=565,y=180+index*82,known=unlocked.has(achievement.id),ready=pending.has(achievement.id),card=this.add.rectangle(x,y,430,65,known?0xe8f5e9:ready?0xffedbd:0xd7e1dd,.98).setStrokeStyle(3,known?COLORS.green:ready?COLORS.gold:0x6f858a);
-        const seal=this.add.circle(x-182,y,20,known?COLORS.gold:ready?COLORS.coral:0x71858b).setStrokeStyle(2,COLORS.navy);
-        const mark=this.add.text(x-182,y,known?'★':ready?'!':'?',{fontSize:'18px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
-        const name=this.add.text(x-145,y-14,known||ready?achievement.title:'???',{fontSize:'16px',fontStyle:'bold',color:'#153a4a'});
-        const description=this.add.text(x-145,y+11,known?achievement.description:ready?`READY  +${achievement.coins} COINS  +${achievement.xp} XP`:'Keep exploring Sunny Pier.',{fontSize:compact?'13px':'11px',fontStyle:'bold',color:ready?'#ef6b4a':'#4b6973'});
+      const pageSize=5,totalPages=Math.ceil(ACHIEVEMENTS.length/pageSize),page=Phaser.Math.Clamp(badgePage,0,totalPages-1),unlocked=new Set(save.achievementIds),pending=new Set(save.pendingAchievementIds);items.push(this.add.text(790,110,`${unlocked.size} / ${ACHIEVEMENTS.length} CLAIMED`,{fontSize:'14px',fontStyle:'bold',color:'#153a4a'}).setOrigin(1,.5));
+      ACHIEVEMENTS.slice(page*pageSize,(page+1)*pageSize).forEach((achievement,index)=>{
+        const progress=QuestService.achievementProgress(save,achievement.id),x=565,y=170+index*66,known=unlocked.has(achievement.id),ready=pending.has(achievement.id),card=this.add.rectangle(x,y,430,58,known?0xe8f5e9:ready?0xffedbd:0xd7e1dd,.98).setStrokeStyle(3,known?COLORS.green:ready?COLORS.gold:0x6f858a);
+        const seal=this.add.circle(x-182,y,19,known?COLORS.gold:ready?COLORS.coral:0x71858b).setStrokeStyle(2,COLORS.navy);
+        const mark=this.add.text(x-182,y,known?'★':ready?'!':String(progress.current),{fontSize:known||ready?'18px':'12px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
+        const name=this.add.text(x-145,y-13,achievement.title,{fontSize:'15px',fontStyle:'bold',color:'#153a4a'});
+        const description=this.add.text(x-145,y+9,ready?`READY  +${achievement.coins} COINS  +${achievement.xp} XP`:`${achievement.description}  ${progress.current}/${progress.target}`,{fontSize:compact?'12px':'10px',fontStyle:'bold',color:ready?'#ef6b4a':'#4b6973'});
         items.push(card,seal,mark,name,description);
         if(ready){const claim=this.add.text(x+188,y,'CLAIM',{fontSize:compact?'14px':'12px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#55a86f'}).setPadding(compact?11:8,compact?7:5).setOrigin(1,.5).setInteractive({useHandCursor:true});claim.on('pointerdown',()=>this.claimBadge(achievement.id,x+150,y));items.push(claim);}
       });
+      const pageText=this.add.text(565,490,`PAGE ${page+1} / ${totalPages}`,{fontSize:'12px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5),previous=this.add.text(430,490,'‹ PREV',{fontSize:'13px',fontStyle:'bold',color:'#fff6dc',backgroundColor:page>0?'#ef6b4a':'#71858b'}).setPadding(10,6).setOrigin(.5),next=this.add.text(700,490,'NEXT ›',{fontSize:'13px',fontStyle:'bold',color:'#fff6dc',backgroundColor:page<totalPages-1?'#ef6b4a':'#71858b'}).setPadding(10,6).setOrigin(.5);items.push(previous,pageText,next);
+      if(page>0)previous.setInteractive({useHandCursor:true}).on('pointerdown',()=>this.openJobs('badges',page-1));if(page<totalPages-1)next.setInteractive({useHandCursor:true}).on('pointerdown',()=>this.openJobs('badges',page+1));
     }
-    this.jobsModal=this.add.container(0,0,items).setDepth(220);
+    this.jobsModal=this.createResponsiveModal(items,220);
   }
   private closeJobs(){AudioService.bookClose();this.jobsModal?.destroy(true);this.jobsModal=undefined;this.finishModalClose()}
   private boatFrame(save=SaveService.load()){
@@ -507,11 +547,12 @@ export class PierGameplayScene extends Phaser.Scene {
   private boatOriginY(save=SaveService.load()){return SaveService.boatStage(save)>=2?.26:.5}
   private applyBoatFrame(save=SaveService.load()){this.boatSprite.setFrame(this.boatFrame(save)).setOrigin(.5,this.boatOriginY(save))}
   private openBoatRepair(){
+    PortalBridge.gameplayStop();
     this.modalOpen=true;this.pointerSteering=false;this.help.setVisible(false);this.boatModal?.destroy(true);
     const save=SaveService.load(),stage=SaveService.boatStage(save),nextCost=SaveService.nextBoatRepairCost(save),items:Phaser.GameObjects.GameObject[]=[],compact=compactViewport(this);
     const shade=this.add.rectangle(480,270,960,540,0x102f3d,.78).setInteractive(),paper=this.add.rectangle(480,280,850,470,0xfff6dc,.99).setStrokeStyle(8,COLORS.navy);
     const title=this.add.text(95,62,'THE QUESTIONABLY SEAWORTHY BOAT',{fontSize:'27px',fontStyle:'bold',color:'#153a4a'}),subtitle=this.add.text(95,97,stage===3?'IT FLOATS. THE HARBOR MASTER IS STUNNED.':'TECHNICAL STATUS: FLOATS. MOSTLY.',{fontSize:'13px',fontStyle:'bold',color:'#4b6973'});
-    const close=this.add.text(866,65,'X',{fontSize:compact?'26px':'24px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(compact?16:12,compact?10:7).setOrigin(.5).setInteractive({useHandCursor:true});close.on('pointerdown',()=>this.closeBoatRepair());
+    const close=this.add.text(842,65,'X',{fontSize:compact?'26px':'24px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(compact?16:12,compact?10:7).setOrigin(.5).setInteractive({useHandCursor:true});close.on('pointerdown',()=>this.closeBoatRepair());
     const art=this.add.image(270,285,'hub-boat-states',this.boatFrame(save)).setDisplaySize(330,330),stageNames=['HULL PATCHED','MOTOR PERSUADED','MÖWE EVICTED'];
     items.push(shade,paper,title,subtitle,close,art);
     stageNames.forEach((name,index)=>{const done=index<stage,y=180+index*78,card=this.add.rectangle(630,y,330,58,done?0xd9eedc:0xe8f5e9,.98).setStrokeStyle(3,done?COLORS.green:COLORS.navy),mark=this.add.text(490,y,done?'✓':String(index+1),{fontSize:'18px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5),label=this.add.text(525,y-10,name,{fontSize:'15px',fontStyle:'bold',color:'#153a4a'}),cost=this.add.text(525,y+12,done?'COMPLETE':`${BOAT_REPAIR_COSTS[index]} COINS`,{fontSize:'12px',fontStyle:'bold',color:done?'#55a86f':'#ef6b4a'});items.push(card,mark,label,cost);});
@@ -519,7 +560,7 @@ export class PierGameplayScene extends Phaser.Scene {
     items.push(statusText,this.add.text(270,455,`INVESTED  ${save.boat.investedCoins} / ${BOAT_REPAIR_COSTS.reduce((sum,cost)=>sum+cost,0)} COINS`,{fontSize:'14px',fontStyle:'bold',color:'#4b6973'}).setOrigin(.5));
     if(nextCost!==undefined){const canAfford=save.coins>=nextCost,repair=this.add.text(630,475,canAfford?`REPAIR  ${nextCost}`:`NEED ${nextCost-save.coins} MORE COINS`,{fontSize:'15px',fontStyle:'bold',color:'#fff6dc',backgroundColor:canAfford?'#ef6b4a':'#71858b'}).setPadding(14,8).setOrigin(.5);if(canAfford){repair.setInteractive({useHandCursor:true});repair.on('pointerdown',()=>this.repairCurrentBoat());}items.push(repair);}
     else items.push(this.add.text(630,475,routeReady?'TALK TO THE ANGLER FOR ROUTES':'MASTER SUNNY PIER TO SET SAIL',{fontSize:'14px',fontStyle:'bold',color:'#fff6dc',backgroundColor:routeReady?'#55a86f':'#71858b'}).setPadding(14,8).setOrigin(.5));
-    this.boatModal=this.add.container(0,0,items).setDepth(220);
+    this.boatModal=this.createResponsiveModal(items,220);
   }
   private repairCurrentBoat(){
     const save=SaveService.load(),before=SaveService.boatStage(save),rockyBefore=SaveService.isLocationUnlocked(save,'rocky-cove');if(!SaveService.repairBoat(save)){AudioService.fail();return}AudioService.repair();SaveService.save(save);this.applyBoatFrame(save);this.refreshProgressHud();this.openBoatRepair();const rockyUnlocked=!rockyBefore&&SaveService.isLocationUnlocked(save,'rocky-cove');this.showToast(rockyUnlocked?'Rocky Cove unlocked!':before===2?'Boat repaired! Finish Sunny Pier mastery to sail.':'Repair complete!');
@@ -544,14 +585,27 @@ export class PierGameplayScene extends Phaser.Scene {
     this.time.delayedCall(850,()=>{this.refreshProgressHud();this.tweens.add({targets:this.progressText,scale:1.14,duration:130,yoyo:true});const level=SaveService.levelProgress(SaveService.load().xp).level;if(level>levelBefore){AudioService.levelUp();message.setText(`LEVEL UP!  LEVEL ${level}`).setBackgroundColor('#ef6b4a').setColor('#fff6dc');this.tweens.add({targets:message,scale:1.18,duration:150,yoyo:true});this.time.delayedCall(1000,()=>message.destroy());}else this.tweens.add({targets:message,alpha:0,y:85,duration:350,onComplete:()=>message.destroy()});});
   }
   private showToast(message:string){const tx=this.add.text(480,105,message,{fontSize:'18px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#fff6dc'}).setPadding(12,7).setOrigin(.5).setDepth(90);this.tweens.add({targets:tx,y:85,alpha:0,delay:850,duration:350,onComplete:()=>tx.destroy()})}
+  private createResponsiveModal(items:Phaser.GameObjects.GameObject[],depth:number){
+    const modal=this.add.container(0,0,items).setDepth(depth);
+    const layout=()=>{
+      if(!modal.active)return;
+      const bounds=visibleGameBounds(this),scale=scaleToVisibleBounds(bounds,960,540);
+      modal.setScale(scale).setPosition(bounds.centerX-480*scale,bounds.centerY-270*scale);
+    };
+    layout();this.events.on('render-quality-changed',layout);modal.once('destroy',()=>this.events.off('render-quality-changed',layout));return modal;
+  }
   private layoutSafeArea(){
-    const safe=safeAreaInsets(this);
+    const safe=safeAreaInsets(this),bounds=visibleGameBounds(this),compact=compactViewport(this);
     this.safeTop=safe.top;
     if(this.title?.active)this.title.setY(28+safe.top);
     if(this.castHint?.active)this.castHint.setY(92+safe.top);
     if(this.help?.active)this.help.setY(500-safe.bottom);
-    if(this.locationText?.active)this.locationText.setPosition(22+safe.left,22+safe.top);
-    if(this.progressText?.active)this.progressText.setPosition(938-safe.right,22+safe.top);
+    if(this.locationText?.active)this.locationText.setPosition(22+safe.left,22+safe.top).setFontSize(compact?'14px':'18px');
+    if(this.progressText?.active){
+      const save=SaveService.load(),level=SaveService.levelProgress(save.xp),xp=level.maxed?`${save.xp} XP`:`${level.current}/${level.needed} XP`;
+      this.progressText.setText(compact?`LV ${level.level}   ${xp}   ${save.coins} COINS`:`LEVEL ${level.level}   ${xp}   COINS ${save.coins}`)
+        .setPosition(Math.min(bounds.right-(compact?14:60),compact?800:830),22+safe.top).setFontSize(compact?'13px':'15px');
+    }
     if(this.lineHud?.active)this.lineHud.setPosition(24+safe.left,18+safe.top);
     if(this.basketText?.active)this.basketText.setY(18+safe.top);
     if(this.reelBg?.active)this.reelBg.setPosition(860-safe.right,39+safe.top);
@@ -573,7 +627,7 @@ export class PierGameplayScene extends Phaser.Scene {
         if(cloud.sprite.x-cloud.sprite.displayWidth/2>960)cloud.sprite.x=-cloud.sprite.displayWidth/2;
       }
     }
-    if(this.phase==='CAST'){const step=delta/1000*.72*this.markerDir;this.marker+=step;if(this.marker>=1){this.marker=1;this.markerDir=-1}else if(this.marker<=0){this.marker=0;this.markerDir=1}this.drawCastMeter()}
+    if(this.phase==='CAST'){const step=delta/1000*(this.firstCastAssist?.42:.72)*this.markerDir;this.marker+=step;if(this.marker>=1){this.marker=1;this.markerDir=-1}else if(this.marker<=0){this.marker=0;this.markerDir=1}this.drawCastMeter()}
     else if(this.phase==='UNDERWATER')this.updateUnderwater(delta);else if(this.phase==='RETRACTING')this.updateRetract(delta);
   }
 }
