@@ -12,6 +12,12 @@ interface CrazySdk {
 
 declare global { interface Window { CrazyGames?:{SDK?:CrazySdk} } }
 
+export function shouldUseCrazyGamesSdk(hostname:string,search=''){
+  const crazyGamesHost=hostname==='crazygames.com'||hostname.endsWith('.crazygames.com');
+  const localTest=(hostname==='localhost'||hostname==='127.0.0.1')&&new URLSearchParams(search).get('crazygames')==='1';
+  return crazyGamesHost||localTest;
+}
+
 export class PortalBridge {
   private static ready=false;
   private static initPromise?:Promise<void>;
@@ -22,10 +28,14 @@ export class PortalBridge {
   static init(){
     if(this.initPromise)return this.initPromise;
     this.initPromise=(async()=>{
-      this.sdk=window.CrazyGames?.SDK;
+      if(!shouldUseCrazyGamesSdk(window.location.hostname,window.location.search)){
+        this.submitAnalyticsEvent('game_boot',{platform:'web'});return;
+      }
+      this.sdk=window.CrazyGames?.SDK??await this.loadSdk();
       if(!this.sdk){this.submitAnalyticsEvent('game_boot',{platform:'local'});return;}
       try{
-        await this.sdk.init();this.ready=true;this.loadingStart();this.migrateLocalSave();
+        if(this.sdk.environment==='disabled')return;
+        await this.withTimeout(this.sdk.init(),5000);this.ready=true;this.loadingStart();this.migrateLocalSave();
         this.submitAnalyticsEvent('game_boot',{platform:this.getPlatformName()});
       }catch(error){this.ready=false;console.warn('[PocketPier] CrazyGames SDK unavailable; using local fallback.',error)}
     })();
@@ -60,6 +70,25 @@ export class PortalBridge {
   private static migrateLocalSave(){
     const data=this.sdk?.data;if(!data)return;
     try{const key='pocket-pier-save',cloud=data.getItem(key),local=window.localStorage.getItem(key);if(cloud===null&&local!==null)data.setItem(key,local)}catch(error){console.warn('[PocketPier] Save migration skipped.',error)}
+  }
+
+  private static loadSdk():Promise<CrazySdk|undefined>{
+    return new Promise(resolve=>{
+      const existing=document.querySelector<HTMLScriptElement>('script[data-pocket-pier-crazygames]');
+      const script=existing??document.createElement('script');
+      let settled=false;
+      const finish=()=>{if(settled)return;settled=true;window.clearTimeout(timeout);resolve(window.CrazyGames?.SDK)};
+      const timeout=window.setTimeout(finish,5000);
+      script.addEventListener('load',finish,{once:true});script.addEventListener('error',finish,{once:true});
+      if(!existing){script.src='https://sdk.crazygames.com/crazygames-sdk-v3.js';script.dataset.pocketPierCrazygames='true';script.async=true;document.head.appendChild(script)}
+    });
+  }
+
+  private static withTimeout<T>(promise:Promise<T>,milliseconds:number):Promise<T>{
+    return new Promise((resolve,reject)=>{
+      const timeout=window.setTimeout(()=>reject(new Error(`SDK initialization timed out after ${milliseconds}ms`)),milliseconds);
+      promise.then(value=>{window.clearTimeout(timeout);resolve(value)},error=>{window.clearTimeout(timeout);reject(error)});
+    });
   }
 
   private static requestAd(kind:AdKind,reason:string):Promise<boolean>{

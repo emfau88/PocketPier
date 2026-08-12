@@ -99,6 +99,8 @@ npm run dev
 
 Vite prints the local URL, normally `http://127.0.0.1:5174/` or `http://localhost:5173/`.
 
+The normal local build and GitHub Pages run independently from CrazyGames. To explicitly exercise the prepared SDK path during local development, append `?crazygames=1`; an unavailable SDK still falls back after a short timeout.
+
 ### Verification
 
 ```bash

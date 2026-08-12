@@ -10,8 +10,17 @@ import { LOCATION_ASSETS, MENU_ASSETS, PIER_ASSETS } from '../src/core/AssetMani
 import { joystickKnobPosition, virtualJoystickVector } from '../src/gameplay/TouchControls';
 import { bobberStyle, cycleBobberStyle, unlockedBobberStyles } from '../src/gameplay/Cosmetics';
 import { FISHING_LOCATIONS } from '../src/gameplay/FishingLocation';
+import { shouldUseCrazyGamesSdk } from '../src/core/PortalBridge';
 
 describe('core logic',()=>{
+  it('keeps the CrazyGames SDK optional outside its own and local test hosts',()=>{
+    expect(shouldUseCrazyGamesSdk('emfau88.github.io')).toBe(false);
+    expect(shouldUseCrazyGamesSdk('example.com')).toBe(false);
+    expect(shouldUseCrazyGamesSdk('localhost')).toBe(false);
+    expect(shouldUseCrazyGamesSdk('127.0.0.1')).toBe(false);
+    expect(shouldUseCrazyGamesSdk('localhost','?crazygames=1')).toBe(true);
+    expect(shouldUseCrazyGamesSdk('www.crazygames.com')).toBe(true);
+  });
   it('picks an allowed fish',()=>expect(pickFish(0,()=>.9).rarity).toBe('Common'));
   it('keeps the fish head on the leading side',()=>{
     expect(fishFlipXForDirection(-1)).toBe(false);
