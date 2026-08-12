@@ -4,8 +4,6 @@ import { COLORS, GAME_WIDTH } from '../core/GameConfig';
 import { compactViewport, configureSceneRendering, visibleGameBounds } from '../core/RenderQuality';
 import { SaveService } from '../core/SaveService';
 import { PortalBridge } from '../core/PortalBridge';
-import { button } from '../ui/Button';
-import { bobberStyle } from '../gameplay/Cosmetics';
 
 export class MainMenuScene extends Phaser.Scene {
   constructor(){super('Menu')}
@@ -21,39 +19,48 @@ export class MainMenuScene extends Phaser.Scene {
     this.add.image(w/2,270,'menu-ocean-morning').setDisplaySize(960,540);
     const shimmer=this.add.image(w/2,270,'menu-water-shimmer').setDisplaySize(960,540).setAlpha(.2);
 
+    const eyebrow=this.add.text(w/2,43,'A COZY FISHING ADVENTURE',{
+      fontFamily:'system-ui',fontSize:'12px',fontStyle:'bold',color:'#153a4a'
+    }).setOrigin(.5).setLetterSpacing(3).setDepth(20);
     const title=this.add.text(w/2,83,'POCKET PIER',{
-      fontFamily:'system-ui',fontSize:'58px',fontStyle:'bold',color:'#fff6dc',stroke:'#153a4a',strokeThickness:8
+      fontFamily:'system-ui',fontSize:'62px',fontStyle:'bold',color:'#fff3ce',stroke:'#153a4a',strokeThickness:9
     }).setOrigin(.5).setDepth(20);
-    const tagline=this.add.text(w/2,139,'CAST  •  EXPLORE  •  COLLECT',{
-      fontFamily:'system-ui',fontSize:'17px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#fff6dc'
-    }).setPadding(14,7).setOrigin(.5).setDepth(20);
+    const titleAccent=this.add.graphics().setDepth(19);
+    const taglinePaper=this.add.graphics().setDepth(18);
+    const tagline=this.add.text(w/2,143,'CAST   •   EXPLORE   •   COLLECT',{
+      fontFamily:'system-ui',fontSize:'15px',fontStyle:'bold',color:'#153a4a'
+    }).setOrigin(.5).setLetterSpacing(1).setDepth(20);
 
-    const bobber=this.add.image(w/2,322,'bobber-basic').setDisplaySize(58,60).setTint(bobberStyle(save).tint).setDepth(12);
-    const bobberShadow=this.add.ellipse(w/2,347,64,13,0x153a4a,.12).setDepth(10);
-    const bobberRing=this.add.ellipse(w/2,347,54,10).setStrokeStyle(2,0xfff6dc,.55).setDepth(11);
     if(!reducedMotion){
       this.tweens.add({targets:shimmer,alpha:{from:.12,to:.25},x:w/2+5,duration:4700,yoyo:true,repeat:-1,ease:'Sine.inOut'});
-      this.tweens.add({targets:bobber,angle:{from:-1.2,to:1.2},duration:2100,yoyo:true,repeat:-1,ease:'Sine.inOut'});
-      this.time.addEvent({delay:2450,loop:true,callback:()=>this.spawnRipple(bobber.x,bobber.y+25)});
       this.scheduleGull(true);
     }
 
-    const startButton=button(this,w/2,438,'START FISHING',()=>this.startFishing(save.lastLocationId),290,68).setDepth(30);
-    const nextStop=this.add.text(w/2,484,`Next stop: ${this.locationLabel(save.lastLocationId)}`,{
-      fontFamily:'system-ui',fontSize:'14px',fontStyle:'bold',color:'#fff6dc',stroke:'#153a4a',strokeThickness:4
-    }).setOrigin(.5).setDepth(20);
-    const progressText=this.add.text(w-18,18,`LEVEL ${progress.level}   ${xpLabel}   COINS ${save.coins}`,{
-      fontFamily:'system-ui',fontSize:'16px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#153a4a'
-    }).setOrigin(1,0).setPadding(9,7).setDepth(30);
+    const destinationLabel=this.add.text(w/2,351,'NEXT TRIP',{
+      fontFamily:'system-ui',fontSize:'10px',fontStyle:'bold',color:'#fff3ce',backgroundColor:'#153a4a'
+    }).setPadding(9,4).setOrigin(.5).setLetterSpacing(2).setDepth(22);
+    const destinationName=this.add.text(w/2,373,this.locationLabel(save.lastLocationId).toUpperCase(),{
+      fontFamily:'Georgia, serif',fontSize:'23px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#fff3ce'
+    }).setPadding(18,7).setOrigin(.5).setDepth(21);
+    const startButton=this.createPrimaryButton(w/2,438,'HEAD TO THE PIER',()=>this.startFishing(save.lastLocationId));
+    const inputHint=this.add.text(w/2,488,'CLICK OR PRESS SPACE',{
+      fontFamily:'system-ui',fontSize:'11px',fontStyle:'bold',color:'#fff3ce',stroke:'#153a4a',strokeThickness:4
+    }).setOrigin(.5).setLetterSpacing(2).setDepth(20);
+    const progressHud=this.createProgressHud(progress.level,xpLabel,save.coins);
+
     const layout=()=>{
-      const bounds=visibleGameBounds(this),compact=compactViewport(this),top=Math.max(bounds.top+38,68),startY=Math.min(438,bounds.bottom-(compact?96:56));
-      progressText.setText(compact?`LV ${progress.level}   ${xpLabel}   ${save.coins} COINS`:`LEVEL ${progress.level}   ${xpLabel}   COINS ${save.coins}`);
-      title.setPosition(bounds.centerX,top).setFontSize(compact?'48px':'58px');
-      tagline.setPosition(bounds.centerX,top+(compact?49:56)).setFontSize(compact?'15px':'17px');
-      const bobberY=Math.min(322,startY-104);
-      bobber.setPosition(bounds.centerX,bobberY);bobberShadow.setPosition(bounds.centerX,bobberY+25);bobberRing.setPosition(bounds.centerX,bobberY+25);
-      startButton.setPosition(bounds.centerX-w/2,startY-438);nextStop.setPosition(bounds.centerX,compact?startY-47:startY+46);
-      progressText.setPosition(Math.min(bounds.right-14,800),bounds.top+(compact?72:12)).setFontSize(compact?'13px':'16px');
+      const bounds=visibleGameBounds(this),compact=compactViewport(this),top=Math.max(bounds.top+39,73),startY=Math.min(426,bounds.bottom-(compact?77:58));
+      eyebrow.setPosition(bounds.centerX,top-37).setFontSize(compact?'10px':'12px');
+      title.setPosition(bounds.centerX,top).setFontSize(compact?'47px':'62px');
+      const taglineY=top+(compact?53:62);tagline.setPosition(bounds.centerX,taglineY).setFontSize(compact?'12px':'15px');
+      titleAccent.clear().fillStyle(COLORS.coral,1).fillRoundedRect(bounds.centerX-(compact?64:78),top+(compact?27:37),compact?128:156,5,3);
+      taglinePaper.clear().fillStyle(0xfff3ce,.93).lineStyle(2,COLORS.navy,.14)
+        .fillRoundedRect(bounds.centerX-(compact?159:188),taglineY-(compact?15:18),compact?318:376,compact?30:36,9)
+        .strokeRoundedRect(bounds.centerX-(compact?159:188),taglineY-(compact?15:18),compact?318:376,compact?30:36,9);
+      destinationLabel.setPosition(bounds.centerX,startY-78);destinationName.setPosition(bounds.centerX,startY-52).setFontSize(compact?'19px':'23px');
+      startButton.setPosition(bounds.centerX,startY+8).setScale(compact?.88:1);
+      inputHint.setVisible(!compact).setPosition(bounds.centerX,startY+48).setFontSize('11px');
+      progressHud.setScale(compact?.84:1).setPosition(bounds.left+(compact?118:142),bounds.top+(compact?23:36));
     };
     layout();this.events.on('render-quality-changed',layout);
 
@@ -72,9 +79,32 @@ export class MainMenuScene extends Phaser.Scene {
     return 'Sunny Pier';
   }
 
-  private spawnRipple(x:number,y:number){
-    const ripple=this.add.ellipse(x,y,48,10).setStrokeStyle(2,0xfff6dc,.48).setDepth(9);
-    this.tweens.add({targets:ripple,scaleX:2.1,scaleY:1.55,alpha:0,duration:1450,ease:'Sine.easeOut',onComplete:()=>ripple.destroy()});
+  private createPrimaryButton(x:number,y:number,label:string,action:()=>void){
+    const width=338,height=68,art=this.add.graphics();
+    const text=this.add.text(0,-2,label,{fontFamily:'system-ui',fontSize:'21px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(.5).setLetterSpacing(1);
+    const draw=(hover=false,pressed=false)=>{
+      art.clear().fillStyle(COLORS.navy,.24).fillRoundedRect(-width/2+5,-height/2+7,width,height,16)
+        .fillStyle(pressed?0xe76f56:hover?0xff9e83:0xff8369,1).fillRoundedRect(-width/2,-height/2,width,height,16)
+        .lineStyle(3,0xfff3ce,1).strokeRoundedRect(-width/2,-height/2,width,height,16)
+        .lineStyle(1,0xffffff,.26).strokeRoundedRect(-width/2+6,-height/2+6,width-12,height-12,11);
+    };
+    draw();
+    const container=this.add.container(x,y,[art,text]).setSize(width,height).setDepth(30).setInteractive({useHandCursor:true});
+    container.on('pointerover',()=>draw(true)).on('pointerout',()=>draw()).on('pointerdown',()=>draw(false,true)).on('pointerup',()=>{draw(true);AudioService.unlock();AudioService.uiSelect();action()});
+    return container;
+  }
+
+  private createProgressHud(level:number,xp:string,coins:number){
+    const width=268,height=50,art=this.add.graphics();
+    art.fillStyle(COLORS.navy,.22).fillRoundedRect(-width/2+4,-height/2+5,width,height,13)
+      .fillStyle(0xfff3ce,.95).fillRoundedRect(-width/2,-height/2,width,height,13)
+      .lineStyle(2,COLORS.navy,.5).strokeRoundedRect(-width/2,-height/2,width,height,13)
+      .lineStyle(1,COLORS.navy,.22).lineBetween(-45,-16,-45,16).lineBetween(49,-16,49,16);
+    const cell=(x:number,label:string,value:string)=>[
+      this.add.text(x,-10,label,{fontFamily:'system-ui',fontSize:'8px',fontStyle:'bold',color:'#54717a'}).setOrigin(.5).setLetterSpacing(1),
+      this.add.text(x,8,value,{fontFamily:'system-ui',fontSize:'14px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5)
+    ];
+    return this.add.container(0,0,[art,...cell(-89,'LEVEL',String(level)),...cell(1,'XP',xp.replace(' XP','')),...cell(91,'COINS',String(coins))]).setDepth(31);
   }
 
   private scheduleGull(firstFlight=false){
@@ -87,9 +117,6 @@ export class MainMenuScene extends Phaser.Scene {
     const gull=this.add.image(-80,y,keys[0]).setDisplaySize(115,115).setDepth(4);
     let frame=0;
     const flap=this.time.addEvent({delay:165,loop:true,callback:()=>{frame=(frame+1)%keys.length;gull.setTexture(keys[frame]).setDisplaySize(115,115)}});
-    this.tweens.add({
-      targets:gull,x:1040,y:y-Phaser.Math.Between(6,20),duration:Phaser.Math.Between(8200,9800),ease:'Sine.inOut',
-      onComplete:()=>{flap.destroy();gull.destroy();this.scheduleGull()}
-    });
+    this.tweens.add({targets:gull,x:1040,y:y-Phaser.Math.Between(6,20),duration:Phaser.Math.Between(8200,9800),ease:'Sine.inOut',onComplete:()=>{flap.destroy();gull.destroy();this.scheduleGull()}});
   }
 }
