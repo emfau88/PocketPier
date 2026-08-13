@@ -11,7 +11,7 @@ export const BOAT_REPAIR_COSTS=[120,200,280] as const;
 export const BOAT_REPAIR_TOTAL=BOAT_REPAIR_COSTS.reduce((sum,cost)=>sum+cost,0);
 export interface BoatProgress { investedCoins:number; unlocked:boolean }
 export interface SaveData {
-  version:9;
+  version:10;
   coins:number;
   xp:number;
   tutorialComplete:boolean;
@@ -32,6 +32,7 @@ export interface SaveData {
   bobberStyleId:string;
   boat:BoatProgress;
   unlockedLocationIds:FishingLocationId[];
+  pendingLocationIds:FishingLocationId[];
   completedLocationIds:FishingLocationId[];
   lastLocationId:FishingLocationId;
   locationProgress:Record<FishingLocationId,LocationProgress>;
@@ -51,9 +52,9 @@ const freshLocationProgress=():Record<FishingLocationId,LocationProgress>=>({
 });
 
 const fresh=():SaveData=>({
-  version:9,coins:0,xp:0,tutorialComplete:false,underwaterControlsSeen:false,hubIntroStep:0,castTutorialSeen:false,muted:false,fishStats:{},discoveredTreasures:[],
+  version:10,coins:0,xp:0,tutorialComplete:false,underwaterControlsSeen:false,hubIntroStep:0,castTutorialSeen:false,muted:false,fishStats:{},discoveredTreasures:[],
   equipment:{line:0,reel:0,basket:0,bait:0},activeQuests:[],questCycle:0,completedQuestIds:[],achievementIds:[],pendingAchievementIds:[],coolerStickerTier:0,harborStickerCount:0,bobberStyleId:'classic',
-  boat:{investedCoins:0,unlocked:false},unlockedLocationIds:['sunny-pier'],completedLocationIds:[],lastLocationId:'sunny-pier',locationProgress:freshLocationProgress(),claimedLevelRewards:[1]
+  boat:{investedCoins:0,unlocked:false},unlockedLocationIds:['sunny-pier'],pendingLocationIds:[],completedLocationIds:[],lastLocationId:'sunny-pier',locationProgress:freshLocationProgress(),claimedLevelRewards:[1]
 });
 
 function finite(value:unknown,fallback=0){return typeof value==='number'&&Number.isFinite(value)?value:fallback}
@@ -66,7 +67,7 @@ export class SaveService {
     try{
       const value=JSON.parse(storage.getItem(this.key)??'null');
       if(value?.version===1){const xp=Math.max(0,finite(value.xp)),currentLevel=this.levelProgress(xp).level;return {...fresh(),coins:finite(value.coins),xp,tutorialComplete:!!value.tutorialComplete,muted:!!value.muted,claimedLevelRewards:Array.from({length:currentLevel},(_,index)=>index+1)};}
-      if(value?.version!==2&&value?.version!==3&&value?.version!==4&&value?.version!==5&&value?.version!==6&&value?.version!==7&&value?.version!==8&&value?.version!==9)return fresh();
+      if(value?.version!==2&&value?.version!==3&&value?.version!==4&&value?.version!==5&&value?.version!==6&&value?.version!==7&&value?.version!==8&&value?.version!==9&&value?.version!==10)return fresh();
       const base=fresh();
       const unlockedLocationIds=this.locationIds(value.unlockedLocationIds,true);
       const lastLocationId=this.locationId(value.lastLocationId);
@@ -75,7 +76,7 @@ export class SaveService {
         ?[...new Set([1,...value.claimedLevelRewards.filter((level:unknown)=>Number.isInteger(level)&&finite(level)>=2&&finite(level)<=LEVEL_THRESHOLDS.length)])]
         :Array.from({length:currentLevel},(_,index)=>index+1);
       return {
-        ...base,...value,version:9,coins:Math.max(0,finite(value.coins)),xp,underwaterControlsSeen:!!value.underwaterControlsSeen,
+        ...base,...value,version:10,coins:Math.max(0,finite(value.coins)),xp,underwaterControlsSeen:!!value.underwaterControlsSeen,
         hubIntroStep:Math.min(3,Math.max(0,Math.floor(finite(value.hubIntroStep,value.tutorialComplete?3:0)))),castTutorialSeen:!!value.castTutorialSeen||!!value.tutorialComplete,
         fishStats:value.fishStats&&typeof value.fishStats==='object'?value.fishStats:{},
         discoveredTreasures:Array.isArray(value.discoveredTreasures)?[...new Set(value.discoveredTreasures.filter((x:unknown)=>typeof x==='string'))]:[],
@@ -92,6 +93,7 @@ export class SaveService {
         bobberStyleId:typeof value.bobberStyleId==='string'?value.bobberStyleId:'classic',
         boat:{investedCoins:Math.min(BOAT_REPAIR_TOTAL,Math.max(0,finite(value.boat?.investedCoins))),unlocked:!!value.boat?.unlocked},
         unlockedLocationIds,
+        pendingLocationIds:this.locationIds(value.pendingLocationIds,false).filter((id):id is FishingLocationId=>id!=='sunny-pier'&&unlockedLocationIds.includes(id)),
         completedLocationIds:this.locationIds(value.completedLocationIds,false),
         lastLocationId:unlockedLocationIds.includes(lastLocationId)?lastLocationId:'sunny-pier',
         locationProgress:this.sanitizeLocationProgress(value.locationProgress),claimedLevelRewards
@@ -141,6 +143,7 @@ export class SaveService {
       const next=FISHING_LOCATIONS[index+1];if(!next||data.unlockedLocationIds.includes(next.id))continue;
       if(next.id==='rocky-cove'&&!data.boat.unlocked)continue;
       data.unlockedLocationIds.push(next.id);unlocked.push(next.id);
+      if(!data.pendingLocationIds.includes(next.id))data.pendingLocationIds.push(next.id);
     }
     return unlocked;
   }

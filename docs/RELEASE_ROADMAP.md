@@ -190,6 +190,10 @@ Ergebnis Phase 6: 15 manuell abholbare Harbor Jobs, 13 sichtbare Badges mit Fort
 
 ### 2026-08-13
 
+- Gebietswechsel am Pier dauerhaft ueber den Angler erreichbar gemacht; gesperrte Gebiete erklaeren ihre Anforderungen weiterhin im Fishing-Spots-Menue.
+- Neu freigeschaltete Gebiete erhalten einen persistenten orangenen Aufmerksamkeitspunkt, bis der Spieler das neue Ziel auswaehlt.
+- Freischaltmeldung und repariertes Boot verweisen nun konkret auf den Angler; der Boot-Dialog kann direkt in die Gebietsauswahl wechseln.
+- Save-Schema auf Version 10 migriert, um ungesehene Gebietsfreischaltungen ohne Verlust bestehender Spielstaende zu speichern.
 - Startscreen-Schaerfe korrigiert: Desktop-Ansichten ab 1,25-facher Darstellung rendern intern mit 1920x1080 statt 1440x810; Retina-Mobile darf ebenfalls die 2x-Stufe nutzen.
 - Canvas-CSS-Masse werden gerundet, Startscreen-Hintergrund und Wasser-Shimmer reproduzierbar auf 1920x1080 aufbereitet und die Text-Hierarchie mit robusten Arial-/Georgia-Fontstacks nachgeschaerft.
 - Startscreen-Abstaende und das kompaktere Fortschrittsfeld fuer Desktop und Mobile-Landscape neu ausbalanciert.

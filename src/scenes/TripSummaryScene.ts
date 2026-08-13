@@ -32,7 +32,7 @@ export class TripSummaryScene extends Phaser.Scene {
 
     this.add.text(480,55+safe.top*.45,`${location.name.toUpperCase()} TRIP SUMMARY`,{fontSize:'34px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(.5);
     this.add.text(480,105,`${this.trip.catches.length} FISH   •   ${TRIP_CASTS} DIVES   •   +${this.trip.coins} COINS   •   +${this.trip.xp} XP`,{fontSize:compact?'16px':'20px',fontStyle:'bold',color:'#ffd166'}).setOrigin(.5);
-    if(unlockedLocation){const unlock=this.add.text(480,145,`NEW AREA UNLOCKED: ${unlockedLocation.name.toUpperCase()}`,{fontSize:'17px',fontStyle:'bold',color:'#153a4a',backgroundColor:'#ffd166'}).setPadding(14,7).setOrigin(.5).setScale(.4);this.tweens.add({targets:unlock,scale:1,duration:420,ease:'Back.easeOut'});}
+    if(unlockedLocation){const unlock=this.add.text(480,145,`NEW AREA UNLOCKED: ${unlockedLocation.name.toUpperCase()}\nBACK AT THE PIER, TAP THE ANGLER TO CHOOSE IT`,{fontSize:compact?'13px':'15px',fontStyle:'bold',align:'center',color:'#153a4a',backgroundColor:'#ffd166'}).setPadding(14,7).setOrigin(.5).setScale(.4);this.tweens.add({targets:unlock,scale:1,duration:420,ease:'Back.easeOut'});}
     else this.drawMasteryProgress(mastery);
     if(levelRewards.length)this.add.text(480,445,`LEVEL REWARD  +${levelRewards.reduce((sum,reward)=>sum+reward.coins,0)} COINS`,{fontSize:'13px',fontStyle:'bold',color:'#ffd166'}).setOrigin(.5);
     const progressHud=this.add.text(Math.min(bounds.right-(compact?14:60),compact?800:830),22+safe.top,compact?`LV ${previousLevel}   ${startingXp} XP   ${startingCoins} COINS`:`LEVEL ${previousLevel}   XP ${startingXp}   COINS ${startingCoins}`,{fontSize:compact?'13px':'16px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(1,0).setDepth(100);

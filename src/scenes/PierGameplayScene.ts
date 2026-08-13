@@ -36,7 +36,7 @@ export class PierGameplayScene extends Phaser.Scene {
   private safeTop=0;
   private surfaceClouds:{sprite:Phaser.GameObjects.Image;speed:number}[]=[];
   private hubTutorial?:Phaser.GameObjects.Container;private firstCastAssist=false;
-  private cooler!:Phaser.GameObjects.Image;private tacklebox!:Phaser.GameObjects.Image;private boatSprite!:Phaser.GameObjects.Image;private boatZone!:Phaser.GameObjects.Zone;private noticeBoard!:Phaser.GameObjects.Zone;private spotsZone?:Phaser.GameObjects.Zone;private collectionModal?:Phaser.GameObjects.Container;private tackleModal?:Phaser.GameObjects.Container;private jobsModal?:Phaser.GameObjects.Container;private boatModal?:Phaser.GameObjects.Container;private spotsModal?:Phaser.GameObjects.Container;private modalOpen=false;
+  private cooler!:Phaser.GameObjects.Image;private tacklebox!:Phaser.GameObjects.Image;private boatSprite!:Phaser.GameObjects.Image;private boatZone!:Phaser.GameObjects.Zone;private noticeBoard!:Phaser.GameObjects.Zone;private spotsZone?:Phaser.GameObjects.Zone;private spotsCueBg?:Phaser.GameObjects.Rectangle;private spotsCueText?:Phaser.GameObjects.Text;private spotsAttention?:Phaser.GameObjects.Arc;private collectionModal?:Phaser.GameObjects.Container;private tackleModal?:Phaser.GameObjects.Container;private jobsModal?:Phaser.GameObjects.Container;private boatModal?:Phaser.GameObjects.Container;private spotsModal?:Phaser.GameObjects.Container;private modalOpen=false;
   private touchingTarget?:Target;
   private currentTreasureId?:TreasureId;
   private location!:FishingLocation;
@@ -61,7 +61,7 @@ export class PierGameplayScene extends Phaser.Scene {
       if(this.phase==='CAST'&&this.tacklebox?.getBounds().contains(p.worldX,p.worldY)){AudioService.tackleOpen();this.openTackleBox();return}
       if(this.phase==='CAST'&&this.noticeBoard?.getBounds().contains(p.worldX,p.worldY)){AudioService.jobsOpen();this.openJobs('jobs');return}
       if(this.phase==='CAST'&&this.boatZone?.getBounds().contains(p.worldX,p.worldY)){AudioService.boatOpen();this.openBoatRepair();return}
-      if(this.phase==='CAST'&&this.angler?.input?.enabled&&(this.angler.getBounds().contains(p.worldX,p.worldY)||this.spotsZone?.getBounds().contains(p.worldX,p.worldY))){if(this.trip.castsLeft!==TRIP_CASTS){AudioService.fail();this.showToast('Finish this trip before changing fishing spots.');return}AudioService.bookOpen();this.openFishingSpots();return}
+      if(this.phase==='CAST'&&(this.angler.getBounds().contains(p.worldX,p.worldY)||this.spotsZone?.getBounds().contains(p.worldX,p.worldY))){if(this.trip.castsLeft!==TRIP_CASTS){AudioService.fail();this.showToast('Finish this trip before changing fishing spots.');return}AudioService.bookOpen();this.openFishingSpots();return}
       if(this.phase==='UNDERWATER'&&this.touchControls){if(this.reelBg?.getBounds().contains(p.worldX,p.worldY))return;this.beginTouchSteering(p);return}
       this.pointerSteering=this.phase==='UNDERWATER';this.hookTarget.set(p.worldX,p.worldY);this.press();
     });
@@ -95,7 +95,7 @@ export class PierGameplayScene extends Phaser.Scene {
     this.boatZone=this.add.zone(620,335,175,82).setInteractive({useHandCursor:true}).setDepth(6);
     const stickerColors=[0xffd166,0xef6b4a,0x69d6c5];
     for(let i=0;i<Math.min(3,save.coolerStickerTier+save.harborStickerCount);i++)stickers.push(this.add.circle(141+i*11,426,4,stickerColors[i]).setStrokeStyle(1,0xfff6dc).setDepth(5));
-    this.angler=this.add.image(330,350,'angler-chair-perspective').setDisplaySize(315,210).setDepth(5);
+    this.angler=this.add.image(330,350,'angler-chair-perspective').setDisplaySize(315,210).setDepth(5).setInteractive({useHandCursor:true}).on('pointerover',()=>this.angler.setTint(0xfff2d4)).on('pointerout',()=>this.angler.clearTint());
     const hotspotCues=[
       this.add.text(160,384,'FISHBOOK',{fontSize:'10px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#153a4a'}).setPadding(6,3).setOrigin(.5).setDepth(7),
       this.add.text(225,414,'TACKLE',{fontSize:'10px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#153a4a'}).setPadding(6,3).setOrigin(.5).setDepth(7),
@@ -108,15 +108,13 @@ export class PierGameplayScene extends Phaser.Scene {
       ...(gearReady?[this.add.circle(258,423,7,COLORS.coral).setStrokeStyle(2,COLORS.cream).setDepth(8)]:[]),
       ...(boatCost!==undefined&&save.coins>=boatCost?[this.add.circle(675,292,7,COLORS.coral).setStrokeStyle(2,COLORS.cream).setDepth(8)]:[])
     ];
-    const spotCue:Phaser.GameObjects.GameObject[]=[];
-    if(save.unlockedLocationIds.length>1){
-      this.angler.setInteractive({useHandCursor:true}).on('pointerover',()=>this.angler.setTint(0xfff2d4)).on('pointerout',()=>this.angler.clearTint());
-      const cueBg=this.add.rectangle(318,250,116,45,0xfff6dc,.96).setStrokeStyle(3,COLORS.navy).setDepth(7);
-      const cueIcon=this.add.image(279,250,this.spotBadgeTexture(this.location.id)).setDisplaySize(38,38).setDepth(8);
-      const cueText=this.add.text(337,250,'SPOTS',{fontSize:'13px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5).setDepth(8);
-      this.spotsZone=this.add.zone(318,250,120,50).setInteractive({useHandCursor:true}).setDepth(9);
-      spotCue.push(cueBg,cueIcon,cueText,this.spotsZone);
-    }else this.spotsZone=undefined;
+    const spotCue:Phaser.GameObjects.GameObject[]=[],routesReady=save.unlockedLocationIds.length>1,newRoute=save.pendingLocationIds.length>0;
+    const cueBg=this.spotsCueBg=this.add.rectangle(318,250,154,45,0xfff6dc,.96).setStrokeStyle(3,newRoute?COLORS.coral:COLORS.navy).setDepth(7);
+    const cueIcon=this.add.image(261,250,this.spotBadgeTexture(this.location.id)).setDisplaySize(38,38).setDepth(8);
+    const cueText=this.spotsCueText=this.add.text(337,250,routesReady?'CHOOSE SPOT':'FISHING SPOTS',{fontSize:'12px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5).setDepth(8);
+    this.spotsZone=this.add.zone(318,250,158,50).setInteractive({useHandCursor:true}).setDepth(9);
+    this.spotsAttention=this.add.circle(385,228,8,COLORS.coral).setStrokeStyle(2,COLORS.cream).setDepth(10).setVisible(newRoute);
+    spotCue.push(cueBg,cueIcon,cueText,this.spotsZone,this.spotsAttention);
     const frontPostRipples=this.makePostRipples(true);
     this.bobber=this.add.image(585,315,'bobber-basic').setDisplaySize(52,54).setVisible(false).setDepth(8);
     this.bobber.setTint(bobberStyle(save).tint);
@@ -408,7 +406,7 @@ export class PierGameplayScene extends Phaser.Scene {
   private chooseFishingSpot(id:FishingLocationId){
     AudioService.uiSelect();
     if(id===this.location.id){this.closeFishingSpots(false);return}
-    const save=SaveService.load();save.lastLocationId=id;SaveService.save(save);
+    const save=SaveService.load();save.lastLocationId=id;save.pendingLocationIds=save.pendingLocationIds.filter(locationId=>locationId!==id);SaveService.save(save);
     this.spotsModal?.destroy(true);this.spotsModal=undefined;this.modalOpen=false;PortalBridge.gameplayStop();this.scene.start('Loading',{locationId:id});
   }
   private closeFishingSpots(playSound=true){if(playSound)AudioService.uiCancel();this.spotsModal?.destroy(true);this.spotsModal=undefined;this.finishModalClose()}
@@ -560,11 +558,11 @@ export class PierGameplayScene extends Phaser.Scene {
     const routeReady=SaveService.isLocationUnlocked(save,'rocky-cove'),status=stage<3?`REPAIR ${stage+1} OF 3` : routeReady?'ROCKY COVE ROUTE READY':'BOAT READY • FINISH SUNNY PIER MASTERY',statusText=this.add.text(630,425,status,{fontSize:'15px',fontStyle:'bold',color:routeReady?'#55a86f':'#153a4a'}).setOrigin(.5);
     items.push(statusText,this.add.text(270,455,`INVESTED  ${save.boat.investedCoins} / ${BOAT_REPAIR_COSTS.reduce((sum,cost)=>sum+cost,0)} COINS`,{fontSize:'14px',fontStyle:'bold',color:'#4b6973'}).setOrigin(.5));
     if(nextCost!==undefined){const canAfford=save.coins>=nextCost,repair=this.add.text(630,475,canAfford?`REPAIR  ${nextCost}`:`NEED ${nextCost-save.coins} MORE COINS`,{fontSize:'15px',fontStyle:'bold',color:'#fff6dc',backgroundColor:canAfford?'#ef6b4a':'#71858b'}).setPadding(14,8).setOrigin(.5);if(canAfford){repair.setInteractive({useHandCursor:true});repair.on('pointerdown',()=>this.repairCurrentBoat());}items.push(repair);}
-    else items.push(this.add.text(630,475,routeReady?'TALK TO THE ANGLER FOR ROUTES':'MASTER SUNNY PIER TO SET SAIL',{fontSize:'14px',fontStyle:'bold',color:'#fff6dc',backgroundColor:routeReady?'#55a86f':'#71858b'}).setPadding(14,8).setOrigin(.5));
+    else {const routes=this.add.text(630,475,routeReady?'CHOOSE FISHING SPOT':'MASTER SUNNY PIER TO SET SAIL',{fontSize:'14px',fontStyle:'bold',color:'#fff6dc',backgroundColor:routeReady?'#55a86f':'#71858b'}).setPadding(14,8).setOrigin(.5);if(routeReady)routes.setInteractive({useHandCursor:true}).on('pointerdown',()=>{AudioService.uiSelect();this.boatModal?.destroy(true);this.boatModal=undefined;this.openFishingSpots()});items.push(routes);}
     this.boatModal=this.createResponsiveModal(items,220);
   }
   private repairCurrentBoat(){
-    const save=SaveService.load(),before=SaveService.boatStage(save),rockyBefore=SaveService.isLocationUnlocked(save,'rocky-cove');if(!SaveService.repairBoat(save)){AudioService.fail();return}AudioService.repair();SaveService.save(save);this.applyBoatFrame(save);this.refreshProgressHud();this.openBoatRepair();const rockyUnlocked=!rockyBefore&&SaveService.isLocationUnlocked(save,'rocky-cove');this.showToast(rockyUnlocked?'Rocky Cove unlocked!':before===2?'Boat repaired! Finish Sunny Pier mastery to sail.':'Repair complete!');
+    const save=SaveService.load(),before=SaveService.boatStage(save),rockyBefore=SaveService.isLocationUnlocked(save,'rocky-cove');if(!SaveService.repairBoat(save)){AudioService.fail();return}AudioService.repair();SaveService.save(save);this.applyBoatFrame(save);this.refreshProgressHud();this.refreshFishingSpotCue(save);this.openBoatRepair();const rockyUnlocked=!rockyBefore&&SaveService.isLocationUnlocked(save,'rocky-cove');this.showToast(rockyUnlocked?'Rocky Cove unlocked! Tap the angler to choose it.':before===2?'Boat repaired! Finish Sunny Pier mastery to sail.':'Repair complete!');
   }
   private closeBoatRepair(){AudioService.uiCancel();this.boatModal?.destroy(true);this.boatModal=undefined;this.finishModalClose()}
   private claimJob(id:string,x:number,y:number){
@@ -578,6 +576,12 @@ export class PierGameplayScene extends Phaser.Scene {
   private refreshProgressHud(){
     const save=SaveService.load(),level=SaveService.levelProgress(save.xp),xpLabel=level.maxed?`${save.xp} XP`:`${level.current}/${level.needed} XP`;
     this.progressText.setText(`LEVEL ${level.level}   ${xpLabel}   COINS ${save.coins}`);
+  }
+  private refreshFishingSpotCue(save=SaveService.load()){
+    const routesReady=save.unlockedLocationIds.length>1,newRoute=save.pendingLocationIds.length>0;
+    this.spotsCueBg?.setStrokeStyle(3,newRoute?COLORS.coral:COLORS.navy);
+    this.spotsCueText?.setText(routesReady?'CHOOSE SPOT':'FISHING SPOTS');
+    this.spotsAttention?.setVisible(newRoute);
   }
   private animateClaimReward(label:string,coins:number,xp:number,x:number,y:number,levelBefore:number,extra:string){
     for(let i=0;i<8;i++){const coin=i%2===0,particle=this.add.text(x+(i%3)*8,y+(i%2)*7,coin?'●':'✦',{fontSize:coin?'17px':'15px',fontStyle:'bold',color:coin?'#ffd166':'#69d6c5',stroke:'#153a4a',strokeThickness:3}).setOrigin(.5).setDepth(260);this.tweens.add({targets:particle,x:900+(i%3)*12,y:28,alpha:{from:1,to:.75},duration:430+i*45,delay:i*35,ease:'Cubic.easeIn',onComplete:()=>particle.destroy()});}

@@ -82,23 +82,23 @@ describe('core logic',()=>{
 
   it('migrates v1 progress without losing coins or xp',()=>{
     const save=SaveService.load({getItem:()=>JSON.stringify({version:1,coins:321,xp:88,tutorialComplete:true,muted:true})});
-    expect(save).toMatchObject({version:9,coins:321,xp:88,tutorialComplete:true,underwaterControlsSeen:false,hubIntroStep:0,castTutorialSeen:false,bobberStyleId:'classic',muted:true,unlockedLocationIds:['sunny-pier'],completedLocationIds:[],lastLocationId:'sunny-pier',claimedLevelRewards:[1]});
+    expect(save).toMatchObject({version:10,coins:321,xp:88,tutorialComplete:true,underwaterControlsSeen:false,hubIntroStep:0,castTutorialSeen:false,bobberStyleId:'classic',muted:true,unlockedLocationIds:['sunny-pier'],pendingLocationIds:[],completedLocationIds:[],lastLocationId:'sunny-pier',claimedLevelRewards:[1]});
     expect(save.fishStats).toEqual({});expect(save.discoveredTreasures).toEqual([]);
   });
 
   it('migrates v2 saves with empty pending badge claims',()=>{
     const save=SaveService.load({getItem:()=>JSON.stringify({version:2,coins:77,xp:44,achievementIds:['first-catch']})});
-    expect(save).toMatchObject({version:9,coins:77,xp:44,achievementIds:['first-catch'],pendingAchievementIds:[],unlockedLocationIds:['sunny-pier'],lastLocationId:'sunny-pier'});
+    expect(save).toMatchObject({version:10,coins:77,xp:44,achievementIds:['first-catch'],pendingAchievementIds:[],unlockedLocationIds:['sunny-pier'],pendingLocationIds:[],lastLocationId:'sunny-pier'});
   });
 
   it('persists the one-time underwater touch tutorial flag',()=>{
     const save=SaveService.load({getItem:()=>JSON.stringify({version:7,underwaterControlsSeen:true,hubIntroStep:2,castTutorialSeen:true})});
-    expect(save).toMatchObject({version:9,underwaterControlsSeen:true,hubIntroStep:2,castTutorialSeen:true});
+    expect(save).toMatchObject({version:10,underwaterControlsSeen:true,hubIntroStep:2,castTutorialSeen:true});
   });
 
   it('migrates v6 progress and shows the new touch tutorial once',()=>{
     const save=SaveService.load({getItem:()=>JSON.stringify({version:6,coins:25,claimedLevelRewards:[1,2]})});
-    expect(save).toMatchObject({version:9,coins:25,claimedLevelRewards:[1,2],underwaterControlsSeen:false,hubIntroStep:0,castTutorialSeen:false});
+    expect(save).toMatchObject({version:10,coins:25,claimedLevelRewards:[1,2],underwaterControlsSeen:false,hubIntroStep:0,castTutorialSeen:false});
   });
 
   it('requires area mastery and a repaired boat before unlocking new routes',()=>{
@@ -110,15 +110,17 @@ describe('core logic',()=>{
     expect(save.completedLocationIds).toContain('sunny-pier');expect(SaveService.isLocationUnlocked(save,'rocky-cove')).toBe(false);
     save.coins=BOAT_REPAIR_TOTAL;BOAT_REPAIR_COSTS.forEach(()=>expect(SaveService.repairBoat(save)).toBe(true));
     expect(save.unlockedLocationIds).toEqual(['sunny-pier','rocky-cove']);
+    expect(save.pendingLocationIds).toEqual(['rocky-cove']);
     ['kelp-wrasse','tide-mackerel'].forEach(id=>SaveService.recordCatch(save,id,.8));SaveService.discoverTreasure(save,'barnacle-bell');
     SaveService.recordTripProgress(save,'rocky-cove',3,1);SaveService.recordTripProgress(save,'rocky-cove',2,0);SaveService.recordTripProgress(save,'rocky-cove',2,0);
     expect(save.completedLocationIds).toEqual(['sunny-pier','rocky-cove']);
     expect(save.unlockedLocationIds).toEqual(['sunny-pier','rocky-cove','moonlit-trench']);
+    expect(save.pendingLocationIds).toEqual(['rocky-cove','moonlit-trench']);
   });
 
   it('migrates v3 saves without unlocking later areas early',()=>{
     const save=SaveService.load({getItem:()=>JSON.stringify({version:3,coins:42,xp:210,fishStats:{minnow:{count:2,bestWeight:.3}}})});
-    expect(save).toMatchObject({version:9,coins:42,xp:210,unlockedLocationIds:['sunny-pier'],completedLocationIds:[],lastLocationId:'sunny-pier'});
+    expect(save).toMatchObject({version:10,coins:42,xp:210,unlockedLocationIds:['sunny-pier'],completedLocationIds:[],lastLocationId:'sunny-pier'});
     expect(save.fishStats.minnow.count).toBe(2);
   });
 
@@ -131,7 +133,7 @@ describe('core logic',()=>{
 
   it('migrates v5 progress without replaying old level rewards',()=>{
     const save=SaveService.load({getItem:()=>JSON.stringify({version:5,coins:90,xp:450,boat:{investedCoins:350,unlocked:false},unlockedLocationIds:['sunny-pier','rocky-cove'],completedLocationIds:['sunny-pier'],lastLocationId:'rocky-cove'})});
-    expect(save).toMatchObject({version:9,coins:90,xp:450,claimedLevelRewards:[1,2,3,4],unlockedLocationIds:['sunny-pier','rocky-cove'],lastLocationId:'rocky-cove'});
+    expect(save).toMatchObject({version:10,coins:90,xp:450,claimedLevelRewards:[1,2,3,4],unlockedLocationIds:['sunny-pier','rocky-cove'],lastLocationId:'rocky-cove'});
     expect(save.boat.investedCoins).toBe(350);expect(SaveService.awardXp(save,0)).toEqual([]);
     expect(save.locationProgress['sunny-pier']).toEqual({trips:0,catches:0,treasures:0});
   });
