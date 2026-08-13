@@ -26,6 +26,11 @@ export const PIER_ASSETS:GameAsset[]=[
   image('hub-tacklebox-closed',new URL('../assets/runtime/hub_tacklebox_closed.webp',import.meta.url)),
   image('hub-tacklebox-open',new URL('../assets/runtime/hub_tacklebox_open.webp',import.meta.url)),
   image('upgrade-icons',new URL('../assets/runtime/ui_upgrade_icons.webp',import.meta.url)),
+  image('equipment-progression',new URL('../assets/runtime/ui_equipment_progression.webp',import.meta.url)),
+  image('fishbook-open',new URL('../assets/runtime/ui_fishbook_open.webp',import.meta.url)),
+  image('badge-collection',new URL('../assets/runtime/ui_badge_collection.webp',import.meta.url)),
+  image('menu-decorations',new URL('../assets/runtime/ui_menu_decorations.webp',import.meta.url)),
+  image('boat-repair-steps',new URL('../assets/runtime/ui_boat_repair_steps.webp',import.meta.url)),
   image('hub-jobs-notice',new URL('../assets/runtime/hub_jobs_notice.webp',import.meta.url)),
   image('harbor-notes',new URL('../assets/runtime/ui_harbor_notes.webp',import.meta.url)),
   image('hub-boat-states',new URL('../assets/runtime/hub_boat_side_states.webp',import.meta.url)),
@@ -126,5 +131,25 @@ export function configurePierTextureFrames(scene:Phaser.Scene){
     boats.add('boat-hull',0,width,0,source.width-width,height);
     boats.add('boat-motor',0,0,height,width,source.height-height);
     boats.add('boat-ready',0,width,height,source.width-width,source.height-height);
+  }
+  const equipment=scene.textures.get('equipment-progression');
+  if(!equipment.has('line-tier-0')){
+    const source=equipment.getSourceImage() as HTMLImageElement,cellWidth=Math.floor(source.width/4),cellHeight=Math.floor(source.height/4),names=['line','reel','basket','bait'];
+    for(let tier=0;tier<4;tier++)for(let column=0;column<4;column++)equipment.add(`${names[column]}-tier-${tier}`,0,column*cellWidth,tier*cellHeight,column===3?source.width-column*cellWidth:cellWidth,tier===3?source.height-tier*cellHeight:cellHeight);
+  }
+  const badges=scene.textures.get('badge-collection');
+  if(!badges.has('badge-first-catch')){
+    const source=badges.getSourceImage() as HTMLImageElement,cellWidth=Math.floor(source.width/4),cellHeight=Math.floor(source.height/4),ids=['first-catch','secret-finder','ten-fish','fifty-fish','sunny-complete','sunny-master','boat-ready','cove-catch','cove-complete','moonlit-catch','trench-complete','treasure-five','master-angler'];
+    ids.forEach((id,index)=>{const column=index%4,row=Math.floor(index/4);badges.add(`badge-${id}`,0,column*cellWidth,row*cellHeight,column===3?source.width-column*cellWidth:cellWidth,row===3?source.height-row*cellHeight:cellHeight)});
+  }
+  const decorations=scene.textures.get('menu-decorations');
+  if(!decorations.has('decor-wax-seal')){
+    const source=decorations.getSourceImage() as HTMLImageElement,cellWidth=Math.floor(source.width/3),cellHeight=Math.floor(source.height/3),names=['wax-seal','ribbon','mastery','tape','paperclip','map-pin','repair-check','rope-tab','compass'];
+    names.forEach((name,index)=>{const column=index%3,row=Math.floor(index/3);decorations.add(`decor-${name}`,0,column*cellWidth,row*cellHeight,column===2?source.width-column*cellWidth:cellWidth,row===2?source.height-row*cellHeight:cellHeight)});
+  }
+  const repairs=scene.textures.get('boat-repair-steps');
+  if(!repairs.has('repair-hull')){
+    const source=repairs.getSourceImage() as HTMLImageElement,cellWidth=Math.floor(source.width/3),names=['hull','motor','outfitting'];
+    names.forEach((name,index)=>repairs.add(`repair-${name}`,0,index*cellWidth,0,index===2?source.width-index*cellWidth:cellWidth,source.height));
   }
 }

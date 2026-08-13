@@ -1,6 +1,6 @@
 # Pocket Pier Release Roadmap
 
-Stand: 2026-08-12
+Stand: 2026-08-13
 Zielplattformen: Desktop-Browser, Landscape-Mobile und CrazyGames  
 Leitlinie: Erst technische Stabilitaet, dann Progression und Gameplay, danach Content-Produktion und Portal-Release.
 
@@ -116,6 +116,8 @@ Ergebnis Phase 4: Alle drei Angelgebiete besitzen nun eine eigene spielmechanisc
 - [x] Unterwasser-Vordergrund-, Partikel- und Tiefenlayer je Gebiet erstellen.
 - [x] Sichtbare Upgrade-Zustaende fuer Leine, Rolle, Koeder und Korb integrieren.
 - [x] Vorhandene Catch-Card-, Reel-, Cast- und Perfect-Hook-Assets vor Neuproduktion pruefen.
+- [x] Gemeinsame hochwertige Menuesprache fuer Tackle Box, Fishbook, Fishing Spots, Boot Repair sowie Jobs/Badges einfuehren.
+- [x] Eigene Ausruestungsstufen, Badge-Motive, Fishbook-, Reparatur- und Menuedekorations-Assets integrieren.
 
 Asset-Audit: `fx_perfect_hook` wird als Perfect-Cast-Belohnung integriert. `ui_catch_card` bleibt fuer eine spaetere Einzel-/Rare-Fanginszenierung reserviert, da der aktuelle Dive mehrere Fische zeigen kann. `ui_reel_panel` ist fuer das mobile HUD zu detailreich; `ui_cast_meter` widerspricht mit seinem festen roten Zielbereich der barriereaermeren gruenen Timing-Anzeige. Fuer diese drei Faelle wird vorerst kein Ersatzasset produziert.
 
@@ -185,6 +187,16 @@ Ergebnis Phase 6: 15 manuell abholbare Harbor Jobs, 13 sichtbare Badges mit Fort
 - [ ] Cover bei groesseren Content-Updates erneuern.
 
 ## Aenderungsprotokoll
+
+### 2026-08-13
+
+- Gemeinsamen responsiven Menuerahmen mit konsistentem Header, Schliessen-Ziel, Tabs, Buttons und Zustandsfarben eingefuehrt.
+- Tackle Box mit 16 sichtbaren Ausruestungszustaenden und klaren Tier-Pips aufgewertet.
+- Fishbook als echtes offenes Feldbuch gestaltet; Sammelkarten und Live-Texte bleiben scharf gerenderte UI-Elemente.
+- 13 individuelle Badge-Motive an die vorhandene manuelle Claim- und Fortschrittslogik gekoppelt.
+- Fishing Spots und Boot Repair mit maritimen UI-Akzenten und drei kontextbezogenen Reparaturmotiven ergaenzt.
+- Fuenf ImageGen-Master-Sheets in reproduzierbare, transparente WebP-Runtime-Assets ueberfuehrt; ca. 1,0 MB zusaetzlicher Runtime-Content.
+- Produktions-Build und 38 Regressionstests erfolgreich; Desktop- und Mobile-Landscape-Menues visuell geprueft.
 
 ### 2026-08-12
 

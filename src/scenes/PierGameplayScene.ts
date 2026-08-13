@@ -357,29 +357,51 @@ export class PierGameplayScene extends Phaser.Scene {
     birds.forEach((bird,i)=>this.tweens.add({targets:bird,y:bird.y+(i%2?2:-2),duration:Phaser.Math.Between(900,1500),yoyo:true,repeat:-1,ease:'Sine.inOut'}));
     this.tweens.add({targets:flock,x:1010,y:startY-Phaser.Math.Between(3,14),duration:Phaser.Math.Between(16000,21000),ease:'Linear',onComplete:()=>{flock.destroy(true);this.scheduleSurfaceGull()}});
   }
+  private createMenuChrome(title:string,subtitle:string,onClose:()=>void){
+    const compact=compactViewport(this),items:Phaser.GameObjects.GameObject[]=[];
+    const shade=this.add.rectangle(480,270,960,540,0x102f3d,.78).setInteractive();
+    const shadow=this.add.rectangle(486,286,856,476,0x071e29,.3);
+    const paper=this.add.rectangle(480,280,850,470,0xfff6dc,.995).setStrokeStyle(7,COLORS.navy);
+    const header=this.add.rectangle(480,88,850,86,COLORS.navy,.99);
+    const accent=this.add.rectangle(480,133,850,6,COLORS.coral,1);
+    const heading=this.add.text(88,55,title,{fontSize:'27px',fontStyle:'bold',color:'#fff6dc'});
+    const subheading=this.add.text(89,93,subtitle,{fontSize:compact?'13px':'12px',fontStyle:'bold',color:'#a9e5dc'});
+    const closeRing=this.add.circle(848,78,24,COLORS.coral,1).setStrokeStyle(3,0xfff6dc).setInteractive({useHandCursor:true});
+    const closeMark=this.add.text(848,78,'×',{fontSize:'31px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(.5,.54).setInteractive({useHandCursor:true});
+    closeRing.on('pointerdown',onClose);closeMark.on('pointerdown',onClose);
+    items.push(shade,shadow,paper,header,accent,heading,subheading,closeRing,closeMark);return items;
+  }
+  private createMenuTab(x:number,label:string,active:boolean,onSelect:()=>void,width=205){
+    const back=this.add.rectangle(x,154,width,40,active?COLORS.coral:0xa9e5dc,.98).setStrokeStyle(3,COLORS.navy).setInteractive({useHandCursor:true});
+    const text=this.add.text(x,154,label,{fontSize:'15px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5).setInteractive({useHandCursor:true});
+    const select=()=>{AudioService.uiSelect();onSelect()};back.on('pointerdown',select);text.on('pointerdown',select);return [back,text];
+  }
+  private createMenuButton(x:number,y:number,label:string,enabled:boolean,onSelect?:()=>void,width?:number){
+    const color=enabled?COLORS.coral:0x71858b,back=this.add.rectangle(x,y,width??Math.max(104,label.length*8+30),36,color,1).setStrokeStyle(2,COLORS.navy);
+    const text=this.add.text(x,y,label,{fontSize:'13px',fontStyle:'bold',color:'#fff6dc'}).setOrigin(.5);
+    if(enabled&&onSelect){back.setInteractive({useHandCursor:true});text.setInteractive({useHandCursor:true});const select=()=>{AudioService.uiPop();onSelect()};back.on('pointerdown',select);text.on('pointerdown',select)}
+    return [back,text];
+  }
+  private addTierPips(items:Phaser.GameObjects.GameObject[],x:number,y:number,level:number,max=3){
+    for(let tier=0;tier<max;tier++)items.push(this.add.circle(x+(tier-(max-1)/2)*17,y,5,tier<level?COLORS.gold:0xc1ccc8,1).setStrokeStyle(1,COLORS.navy));
+  }
   private spotBadgeTexture(id:FishingLocationId){return id==='rocky-cove'?'ui-spot-rocky':id==='moonlit-trench'?'ui-spot-moonlit':'ui-spot-sunny'}
   private openFishingSpots(){
     PortalBridge.gameplayStop();
     this.modalOpen=true;this.pointerSteering=false;this.help.setVisible(false);this.spotsModal?.destroy(true);
     const save=SaveService.load(),items:Phaser.GameObjects.GameObject[]=[],compact=compactViewport(this);
-    const shade=this.add.rectangle(480,270,960,540,0x102f3d,.8).setInteractive();
-    const paper=this.add.rectangle(480,270,910,500,0xfff6dc,.99).setStrokeStyle(8,COLORS.navy);
-    const map=this.add.image(480,305,'ui-fishing-spots-map').setDisplaySize(840,390).setAlpha(.22);
-    const title=this.add.text(480,55,'FISHING SPOTS',{fontSize:'30px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
-    const subtitle=this.add.text(480,91,'Talk to the angler whenever you want to fish somewhere else.',{fontSize:compact?'15px':'13px',fontStyle:'bold',color:'#4b6973'}).setOrigin(.5);
-    const close=this.add.text(860,55,'X',{fontSize:compact?'25px':'23px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(compact?16:12,compact?10:7).setOrigin(.5).setInteractive({useHandCursor:true});
-    close.on('pointerdown',()=>this.closeFishingSpots());items.push(shade,paper,map,title,subtitle,close);
+    items.push(...this.createMenuChrome('FISHING SPOTS','CHOOSE YOUR NEXT WATER',()=>this.closeFishingSpots()));
+    const map=this.add.image(480,330,'ui-fishing-spots-map').setDisplaySize(820,342).setAlpha(.14),pin=this.add.image(111,167,'menu-decorations','decor-map-pin').setDisplaySize(42,42);items.push(map,pin);
     FISHING_LOCATIONS.forEach((location,index)=>{
       const x=205+index*275,unlocked=SaveService.isLocationUnlocked(save,location.id),current=location.id===this.location.id,completed=save.completedLocationIds.includes(location.id);
-      const card=this.add.rectangle(x,305,238,344,unlocked?0xfff6dc:0xc8d2cf,.92).setStrokeStyle(4,current?COLORS.coral:unlocked?COLORS.navy:0x71858b);
-      const area=this.add.text(x,147,`AREA ${location.level}${current?'  •  CURRENT':''}`,{fontSize:compact?'14px':'12px',fontStyle:'bold',color:current?'#ef6b4a':unlocked?'#153a4a':'#71858b'}).setOrigin(.5);
-      const emblem=this.add.image(x,215,this.spotBadgeTexture(location.id)).setDisplaySize(112,112).setTint(unlocked?0xffffff:0x71858b).setAlpha(unlocked?1:.52);
-      const name=this.add.text(x,285,unlocked?location.name.toUpperCase():'LOCKED',{fontSize:'20px',fontStyle:'bold',color:'#153a4a',align:'center',wordWrap:{width:210}}).setOrigin(.5);
-      const description=this.add.text(x,337,compact?location.subtitle:location.description,{fontSize:compact?'14px':'12px',fontStyle:'bold',color:'#4b6973',align:'center',wordWrap:{width:195}}).setOrigin(.5);
+      const card=this.add.rectangle(x,330,238,314,unlocked?0xfff6dc:0xc8d2cf,.94).setStrokeStyle(4,current?COLORS.coral:unlocked?COLORS.navy:0x71858b);
+      const area=this.add.text(x,191,`AREA ${location.level}${current?'  •  CURRENT':''}`,{fontSize:compact?'14px':'12px',fontStyle:'bold',color:current?'#ef6b4a':unlocked?'#153a4a':'#71858b'}).setOrigin(.5);
+      const emblem=this.add.image(x,249,this.spotBadgeTexture(location.id)).setDisplaySize(96,96).setTint(unlocked?0xffffff:0x71858b).setAlpha(unlocked?1:.52);
+      const name=this.add.text(x,313,unlocked?location.name.toUpperCase():'LOCKED',{fontSize:'19px',fontStyle:'bold',color:'#153a4a',align:'center',wordWrap:{width:210}}).setOrigin(.5);
+      const description=this.add.text(x,358,compact?location.subtitle:location.description,{fontSize:compact?'13px':'11px',fontStyle:'bold',color:'#4b6973',align:'center',wordWrap:{width:195}}).setOrigin(.5);
       const status=current?'CURRENT SPOT':unlocked?(completed?'FISH HERE AGAIN':'FISH HERE'):location.id==='rocky-cove'?'BOAT + AREA 1 MASTERY':'AREA 2 MASTERY';
-      const action=this.add.text(x,435,status,{fontSize:compact?'14px':'12px',fontStyle:'bold',color:'#fff6dc',backgroundColor:current?'#153a4a':unlocked?'#ef6b4a':'#71858b',align:'center'}).setPadding(compact?14:11,compact?9:7).setOrigin(.5);
-      if(unlocked){card.setInteractive({useHandCursor:true});action.setInteractive({useHandCursor:true});const choose=()=>this.chooseFishingSpot(location.id);card.on('pointerdown',choose);action.on('pointerdown',choose);}
-      items.push(card,area,emblem,name,description,action);
+      const actionItems=this.createMenuButton(x,454,status,unlocked,()=>this.chooseFishingSpot(location.id),210);
+      if(unlocked)card.setInteractive({useHandCursor:true}).on('pointerdown',()=>this.chooseFishingSpot(location.id));items.push(card,area,emblem,name,description,...actionItems);
     });
     this.spotsModal=this.createResponsiveModal(items,220);
   }
@@ -396,28 +418,24 @@ export class PierGameplayScene extends Phaser.Scene {
     const saved=SaveService.load(),items:Phaser.GameObjects.GameObject[]=[],compact=compactViewport(this);
     this.trip.catches.forEach(c=>SaveService.recordCatch(saved,c.fish.id,c.weight));
     this.trip.treasures.forEach(t=>SaveService.discoverTreasure(saved,t.id));
-    const shade=this.add.rectangle(480,270,960,540,0x102f3d,.78).setInteractive(),paper=this.add.rectangle(480,280,850,470,0xfff6dc,.99).setStrokeStyle(8,COLORS.navy),title=this.add.text(95,62,`${this.location.name.toUpperCase()} FIELD BOOK`,{fontSize:'25px',fontStyle:'bold',color:'#153a4a'});
-    const fishTab=this.add.rectangle(315,115,210,45,tab==='fish'?COLORS.coral:0xa9e5dc).setStrokeStyle(3,COLORS.navy).setInteractive({useHandCursor:true}),fishText=this.add.text(315,115,'FISH',{fontSize:'18px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
-    const treasureTab=this.add.rectangle(545,115,210,45,tab==='treasures'?COLORS.coral:0xa9e5dc).setStrokeStyle(3,COLORS.navy).setInteractive({useHandCursor:true}),treasureText=this.add.text(545,115,'TREASURES',{fontSize:'18px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
-    const close=this.add.text(842,65,'X',{fontSize:compact?'26px':'24px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(compact?16:12,compact?10:7).setOrigin(.5).setInteractive({useHandCursor:true});
-    fishTab.on('pointerdown',()=>{AudioService.uiSelect();this.openCollection('fish')});treasureTab.on('pointerdown',()=>{AudioService.uiSelect();this.openCollection('treasures')});close.on('pointerdown',()=>this.closeCollection());
-    items.push(shade,paper,title,fishTab,fishText,treasureTab,treasureText,close);
-    if(this.trip.catches.length||this.trip.treasures.length)items.push(this.add.text(865,105,'CURRENT TRIP INCLUDED',{fontSize:'10px',fontStyle:'bold',color:'#ef6b4a'}).setOrigin(1,.5));
+    items.push(...this.createMenuChrome(`${this.location.name.toUpperCase()} FIELD BOOK`,'YOUR DISCOVERIES, RECORDS & TREASURES',()=>this.closeCollection()));
+    const book=this.add.image(480,343,'fishbook-open').setDisplaySize(790,330).setAlpha(.46);items.push(book,...this.createMenuTab(350,'FISH',tab==='fish',()=>this.openCollection('fish')),...this.createMenuTab(570,'TREASURES',tab==='treasures',()=>this.openCollection('treasures')));
+    if(this.trip.catches.length||this.trip.treasures.length)items.push(this.add.text(790,110,'CURRENT TRIP INCLUDED',{fontSize:'10px',fontStyle:'bold',color:'#ffd166'}).setOrigin(1,.5));
     if(tab==='fish'){
       const discovered=this.location.fish.filter(f=>saved.fishStats[f.id]).length;
-      items.push(this.add.text(790,110,`${discovered} / ${this.location.fish.length} FOUND`,{fontSize:'15px',fontStyle:'bold',color:'#153a4a'}).setOrigin(1,.5));
+      items.push(this.add.text(790,110,`${discovered} / ${this.location.fish.length} FOUND`,{fontSize:'15px',fontStyle:'bold',color:'#ffd166'}).setOrigin(1,.5));
       this.location.fish.forEach((fish,i)=>{
-        const col=i%3,row=Math.floor(i/3),x=230+col*250,y=225+row*155,stat=saved.fishStats[fish.id],known=!!stat;
-        const card=this.add.rectangle(x,y,224,130,known?0xe8f5e9:0xd7e1dd,.98).setStrokeStyle(3,known?fish.color:0x6f858a),icon=this.add.image(x-70,y-12,fish.texture).setDisplaySize(68,42).setTint(known?fish.color:0x37505a).setAlpha(known?1:.55);
+        const col=i%3,row=Math.floor(i/3),x=230+col*250,y=246+row*137,stat=saved.fishStats[fish.id],known=!!stat;
+        const card=this.add.rectangle(x,y,224,116,known?0xe8f5e9:0xd7e1dd,.94).setStrokeStyle(3,known?fish.color:0x6f858a),icon=this.add.image(x-70,y-12,fish.texture).setDisplaySize(68,42).setTint(known?fish.color:0x37505a).setAlpha(known?1:.55);
         const name=this.add.text(x-24,y-42,known?fish.name:'???',{fontSize:'16px',fontStyle:'bold',color:'#153a4a'}),rarity=this.add.text(x-24,y-18,known?fish.rarity:'UNDISCOVERED',{fontSize:compact?'13px':'11px',fontStyle:'bold',color:known?'#4b6973':'#71858b'});
         const detail=this.add.text(x-94,y+27,known?`CAUGHT  ${stat.count}\nBEST  ${stat.bestWeight.toFixed(2)} kg` : fish.hint,{fontSize:compact?'14px':'12px',fontStyle:'bold',color:'#153a4a',wordWrap:{width:185},align:'center'}).setOrigin(0,.5);
         items.push(card,icon,name,rarity,detail);
       });
     }else{
       const discovered=this.location.treasures.filter(t=>saved.discoveredTreasures.includes(t.id)).length;
-      items.push(this.add.text(790,110,`${discovered} / ${this.location.treasures.length} FOUND`,{fontSize:'15px',fontStyle:'bold',color:'#153a4a'}).setOrigin(1,.5));
+      items.push(this.add.text(790,110,`${discovered} / ${this.location.treasures.length} FOUND`,{fontSize:'15px',fontStyle:'bold',color:'#ffd166'}).setOrigin(1,.5));
       this.location.treasures.forEach((treasure,i)=>{
-        const x=235+i*245,y=285,known=saved.discoveredTreasures.includes(treasure.id),card=this.add.rectangle(x,y,220,245,known?0xe8f5e9:0xd7e1dd,.98).setStrokeStyle(3,known?COLORS.gold:0x6f858a),icon=this.add.image(x,y-38,treasure.texture).setDisplaySize(92,92).setTint(known?0xffffff:0x37505a).setAlpha(known?1:.5);
+        const x=235+i*245,y=330,known=saved.discoveredTreasures.includes(treasure.id),card=this.add.rectangle(x,y,220,225,known?0xe8f5e9:0xd7e1dd,.94).setStrokeStyle(3,known?COLORS.gold:0x6f858a),icon=this.add.image(x,y-38,treasure.texture).setDisplaySize(92,92).setTint(known?0xffffff:0x37505a).setAlpha(known?1:.5);
         const name=this.add.text(x,y+35,known?treasure.name:'???',{fontSize:'17px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5),hint=this.add.text(x,y+78,known?`FOUND AT ${this.location.name.toUpperCase()}`:treasure.hint,{fontSize:compact?'14px':'12px',fontStyle:'bold',color:'#4b6973',align:'center',wordWrap:{width:175}}).setOrigin(.5);
         items.push(card,icon,name,hint);
       });
@@ -447,18 +465,13 @@ export class PierGameplayScene extends Phaser.Scene {
     PortalBridge.gameplayStop();
     this.modalOpen=true;this.pointerSteering=false;this.help.setVisible(false);this.tackleModal?.destroy(true);
     const saved=SaveService.load(),items:Phaser.GameObjects.GameObject[]=[],compact=compactViewport(this);
-    const shade=this.add.rectangle(480,270,960,540,0x102f3d,.78).setInteractive();
-    const paper=this.add.rectangle(480,280,850,470,0xfff6dc,.99).setStrokeStyle(8,COLORS.navy);
-    const title=this.add.text(95,62,'THE TACKLE BOX',{fontSize:'29px',fontStyle:'bold',color:'#153a4a'});
-    const subtitle=this.add.text(95,96,'PREPARE YOUR GEAR FOR THE NEXT CATCH',{fontSize:'13px',fontStyle:'bold',color:'#4b6973'});
-    const coins=this.add.text(815,78,`COINS  ${saved.coins}`,{fontSize:'16px',fontStyle:'bold',color:'#153a4a'}).setOrigin(1,.5);
-    const close=this.add.text(842,65,'X',{fontSize:compact?'26px':'24px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(compact?16:12,compact?10:7).setOrigin(.5).setInteractive({useHandCursor:true});
-    close.on('pointerdown',()=>this.closeTackleBox());
+    items.push(...this.createMenuChrome('THE TACKLE BOX','PREPARE YOUR GEAR FOR THE NEXT CATCH',()=>this.closeTackleBox()));
+    const coins=this.add.text(790,112,`COINS  ${saved.coins}`,{fontSize:'15px',fontStyle:'bold',color:'#ffd166'}).setOrigin(1,.5);
     const caseArt=this.add.image(245,245,'hub-tacklebox-open').setDisplaySize(270,205);
     const intro=this.add.text(245,370,'Every upgrade is gentle:\nmore comfort, never a guaranteed catch.',{fontSize:'13px',fontStyle:'bold',align:'center',color:'#153a4a',wordWrap:{width:270}}).setOrigin(.5);
     const style=bobberStyle(saved),styleCount=unlockedBobberStyles(saved).length,styleLabel=this.add.text(245,417,`BOBBER  ${style.name.toUpperCase()}\n${styleCount} / 4 STYLES UNLOCKED`,{fontSize:'12px',fontStyle:'bold',align:'center',color:'#153a4a'}).setOrigin(.5),styleButton=this.add.text(245,462,styleCount>1?'CHANGE STYLE':'EARN 3 BADGES',{fontSize:'12px',fontStyle:'bold',color:'#fff6dc',backgroundColor:styleCount>1?'#ef6b4a':'#71858b'}).setPadding(10,6).setOrigin(.5);
     if(styleCount>1)styleButton.setInteractive({useHandCursor:true}).on('pointerdown',()=>{cycleBobberStyle(saved);SaveService.save(saved);this.bobber.setTint(bobberStyle(saved).tint);this.openTackleBox()});
-    items.push(shade,paper,title,subtitle,coins,close,caseArt,intro,styleLabel,styleButton);
+    items.push(coins,caseArt,intro,styleLabel,styleButton);
     const cards:[string,EquipmentId,string,string][]=[
       ['line-icon','line','LINE','More range: +2 m per tier.'],
       ['reel-icon','reel','REEL','Faster hook and reel-in.'],
@@ -466,17 +479,17 @@ export class PierGameplayScene extends Phaser.Scene {
       ['bait-icon','bait','BAIT','Slightly better rare-fish odds.']
     ];
     cards.forEach(([frame,id,name,description],i)=>{
-      const col=i%2,row=Math.floor(i/2),x=555+col*155,y=185+row*180;
+      const col=i%2,row=Math.floor(i/2),x=555+col*155,y=180+row*190;
       const level=saved.equipment[id],tierAccent=[COLORS.navy,0x7fbf9a,0x49a99a,COLORS.gold][level];
-      const card=this.add.rectangle(x,y,140,150,0xe8f5e9,.98).setStrokeStyle(level===3?5:3,tierAccent);
-      const icon=this.add.image(x,y-36,'upgrade-icons',frame).setDisplaySize(68,68);
+      const card=this.add.rectangle(x,y,140,190,0xe8f5e9,.98).setStrokeStyle(level===3?5:3,tierAccent);
+      const icon=this.add.image(x,y-36,'equipment-progression',`${id}-tier-${level}`).setDisplaySize(76,76);
       const label=this.add.text(x,y+20,name,{fontSize:'16px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
       const detail=this.add.text(x,y+42,description,{fontSize:compact?'12px':'10px',fontStyle:'bold',align:'center',color:'#4b6973',wordWrap:{width:124}}).setOrigin(.5);
       const cost=SaveService.nextEquipmentCost(saved,id),buttonText=cost===undefined?'MAXED':`BUY  ${cost}`;
-      const tier=this.add.text(x,y+61,`TIER ${level} / 3`,{fontSize:compact?'13px':'11px',fontStyle:'bold',color:'#ef6b4a'}).setOrigin(.5);
-      const button=this.add.text(x,y+84,buttonText,{fontSize:compact?'14px':'12px',fontStyle:'bold',color:'#fff6dc',backgroundColor:cost===undefined?'#71858b':saved.coins>=cost?'#ef6b4a':'#9aa8a3'}).setPadding(compact?11:8,compact?7:5).setOrigin(.5);
+      const tier=this.add.text(x,y+58,level===3?'MASTERED':`TIER ${level} / 3`,{fontSize:compact?'13px':'11px',fontStyle:'bold',color:level===3?'#55a86f':'#ef6b4a'}).setOrigin(.5);
+      const button=this.add.text(x,y+96,buttonText,{fontSize:compact?'14px':'12px',fontStyle:'bold',color:'#fff6dc',backgroundColor:cost===undefined?'#71858b':saved.coins>=cost?'#ef6b4a':'#9aa8a3'}).setPadding(compact?11:8,compact?7:5).setOrigin(.5);
       if(cost!==undefined){button.setInteractive({useHandCursor:true});button.on('pointerdown',()=>{AudioService.uiPop();this.confirmEquipmentPurchase(id,name,cost)});}
-      items.push(card,icon,label,detail,tier,button);
+      items.push(card,icon,label,detail,tier,button);this.addTierPips(items,x,y+75,level);
     });
     const note=this.add.text(670,490,`Prices: ${EQUIPMENT_COSTS.join('  •  ')} coins`,{fontSize:compact?'14px':'12px',fontStyle:'bold',color:'#4b6973'}).setOrigin(.5);
     items.push(note);this.tackleModal=this.createResponsiveModal(items,220);
@@ -497,19 +510,9 @@ export class PierGameplayScene extends Phaser.Scene {
     PortalBridge.gameplayStop();
     this.modalOpen=true;this.pointerSteering=false;this.help.setVisible(false);this.jobsModal?.destroy(true);
     const save=SaveService.load();QuestService.ensureActive(save);SaveService.save(save);const items:Phaser.GameObjects.GameObject[]=[],compact=compactViewport(this);
-    const shade=this.add.rectangle(480,270,960,540,0x102f3d,.78).setInteractive();
-    const paper=this.add.rectangle(480,280,850,470,0xfff6dc,.99).setStrokeStyle(8,COLORS.navy);
-    const title=this.add.text(95,62,'HARBOR JOBS',{fontSize:'29px',fontStyle:'bold',color:'#153a4a'});
-    const subtitle=this.add.text(95,88,'COMPLETE TRIPS • EARN COINS, XP & STICKERS',{fontSize:'13px',fontStyle:'bold',color:'#4b6973'});
-    const close=this.add.text(842,65,'X',{fontSize:compact?'26px':'24px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(compact?16:12,compact?10:7).setOrigin(.5).setInteractive({useHandCursor:true});
-    close.on('pointerdown',()=>this.closeJobs());
-    const jobsTab=this.add.rectangle(330,128,205,42,tab==='jobs'?COLORS.coral:0xa9e5dc).setStrokeStyle(3,COLORS.navy).setInteractive({useHandCursor:true});
-    const jobsText=this.add.text(330,128,'JOBS',{fontSize:'17px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
-    const badgesTab=this.add.rectangle(550,128,205,42,tab==='badges'?COLORS.coral:0xa9e5dc).setStrokeStyle(3,COLORS.navy).setInteractive({useHandCursor:true});
-    const badgesText=this.add.text(550,128,'BADGES',{fontSize:'17px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
-    jobsTab.on('pointerdown',()=>{AudioService.jobsOpen();this.openJobs('jobs')});badgesTab.on('pointerdown',()=>{AudioService.jobsOpen();this.openJobs('badges')});
+    items.push(...this.createMenuChrome('HARBOR JOBS','COMPLETE TRIPS • EARN COINS, XP & STICKERS',()=>this.closeJobs()),...this.createMenuTab(330,'JOBS',tab==='jobs',()=>this.openJobs('jobs')),...this.createMenuTab(550,'BADGES',tab==='badges',()=>this.openJobs('badges')));
     const notes=this.add.image(205,296,'harbor-notes').setDisplaySize(220,238);
-    items.push(shade,paper,title,subtitle,close,jobsTab,jobsText,badgesTab,badgesText,notes);
+    items.push(notes);
     if(tab==='jobs'){
       items.push(this.add.text(205,435,'New jobs arrive\nafter completed trips.',{fontSize:'14px',fontStyle:'bold',align:'center',color:'#153a4a'}).setOrigin(.5));
       save.activeQuests.forEach((active,index)=>{
@@ -525,11 +528,11 @@ export class PierGameplayScene extends Phaser.Scene {
         items.push(card,emblem,icon,questTitle,description,reward,amount);
       });
     }else{
-      const pageSize=5,totalPages=Math.ceil(ACHIEVEMENTS.length/pageSize),page=Phaser.Math.Clamp(badgePage,0,totalPages-1),unlocked=new Set(save.achievementIds),pending=new Set(save.pendingAchievementIds);items.push(this.add.text(790,110,`${unlocked.size} / ${ACHIEVEMENTS.length} CLAIMED`,{fontSize:'14px',fontStyle:'bold',color:'#153a4a'}).setOrigin(1,.5));
+      const pageSize=5,totalPages=Math.ceil(ACHIEVEMENTS.length/pageSize),page=Phaser.Math.Clamp(badgePage,0,totalPages-1),unlocked=new Set(save.achievementIds),pending=new Set(save.pendingAchievementIds);items.push(this.add.text(790,110,`${unlocked.size} / ${ACHIEVEMENTS.length} CLAIMED`,{fontSize:'14px',fontStyle:'bold',color:'#ffd166'}).setOrigin(1,.5));
       ACHIEVEMENTS.slice(page*pageSize,(page+1)*pageSize).forEach((achievement,index)=>{
         const progress=QuestService.achievementProgress(save,achievement.id),x=565,y=170+index*66,known=unlocked.has(achievement.id),ready=pending.has(achievement.id),card=this.add.rectangle(x,y,430,58,known?0xe8f5e9:ready?0xffedbd:0xd7e1dd,.98).setStrokeStyle(3,known?COLORS.green:ready?COLORS.gold:0x6f858a);
-        const seal=this.add.circle(x-182,y,19,known?COLORS.gold:ready?COLORS.coral:0x71858b).setStrokeStyle(2,COLORS.navy);
-        const mark=this.add.text(x-182,y,known?'★':ready?'!':String(progress.current),{fontSize:known||ready?'18px':'12px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
+        const seal=this.add.image(x-182,y,'badge-collection',`badge-${achievement.id}`).setDisplaySize(48,48).setTint(known||ready?0xffffff:0x71858b).setAlpha(known?1:ready?.92:.42);
+        const mark=this.add.text(x-161,y+15,ready?'!':known?'✓':`${progress.current}/${progress.target}`,{fontSize:'10px',fontStyle:'bold',color:'#fff6dc',backgroundColor:ready?'#ef6b4a':known?'#55a86f':'#71858b'}).setPadding(4,2).setOrigin(.5);
         const name=this.add.text(x-145,y-13,achievement.title,{fontSize:'15px',fontStyle:'bold',color:'#153a4a'});
         const description=this.add.text(x-145,y+9,ready?`READY  +${achievement.coins} COINS  +${achievement.xp} XP`:`${achievement.description}  ${progress.current}/${progress.target}`,{fontSize:compact?'12px':'10px',fontStyle:'bold',color:ready?'#ef6b4a':'#4b6973'});
         items.push(card,seal,mark,name,description);
@@ -550,12 +553,10 @@ export class PierGameplayScene extends Phaser.Scene {
     PortalBridge.gameplayStop();
     this.modalOpen=true;this.pointerSteering=false;this.help.setVisible(false);this.boatModal?.destroy(true);
     const save=SaveService.load(),stage=SaveService.boatStage(save),nextCost=SaveService.nextBoatRepairCost(save),items:Phaser.GameObjects.GameObject[]=[],compact=compactViewport(this);
-    const shade=this.add.rectangle(480,270,960,540,0x102f3d,.78).setInteractive(),paper=this.add.rectangle(480,280,850,470,0xfff6dc,.99).setStrokeStyle(8,COLORS.navy);
-    const title=this.add.text(95,62,'THE QUESTIONABLY SEAWORTHY BOAT',{fontSize:'27px',fontStyle:'bold',color:'#153a4a'}),subtitle=this.add.text(95,97,stage===3?'IT FLOATS. THE HARBOR MASTER IS STUNNED.':'TECHNICAL STATUS: FLOATS. MOSTLY.',{fontSize:'13px',fontStyle:'bold',color:'#4b6973'});
-    const close=this.add.text(842,65,'X',{fontSize:compact?'26px':'24px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#ef6b4a'}).setPadding(compact?16:12,compact?10:7).setOrigin(.5).setInteractive({useHandCursor:true});close.on('pointerdown',()=>this.closeBoatRepair());
-    const art=this.add.image(270,285,'hub-boat-states',this.boatFrame(save)).setDisplaySize(330,330),stageNames=['HULL PATCHED','MOTOR PERSUADED','MÖWE EVICTED'];
-    items.push(shade,paper,title,subtitle,close,art);
-    stageNames.forEach((name,index)=>{const done=index<stage,y=180+index*78,card=this.add.rectangle(630,y,330,58,done?0xd9eedc:0xe8f5e9,.98).setStrokeStyle(3,done?COLORS.green:COLORS.navy),mark=this.add.text(490,y,done?'✓':String(index+1),{fontSize:'18px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5),label=this.add.text(525,y-10,name,{fontSize:'15px',fontStyle:'bold',color:'#153a4a'}),cost=this.add.text(525,y+12,done?'COMPLETE':`${BOAT_REPAIR_COSTS[index]} COINS`,{fontSize:'12px',fontStyle:'bold',color:done?'#55a86f':'#ef6b4a'});items.push(card,mark,label,cost);});
+    items.push(...this.createMenuChrome('THE QUESTIONABLY SEAWORTHY BOAT',stage===3?'IT FLOATS. THE HARBOR MASTER IS STUNNED.':'TECHNICAL STATUS: FLOATS. MOSTLY.',()=>this.closeBoatRepair()));
+    const art=this.add.image(270,285,'hub-boat-states',this.boatFrame(save)).setDisplaySize(330,330),repairArt=this.add.image(630,171,'boat-repair-steps',stage===0?'repair-hull':stage===1?'repair-motor':'repair-outfitting').setDisplaySize(120,40),stageNames=['HULL PATCHED','MOTOR PERSUADED','GULL EVICTED'];
+    items.push(art,repairArt);
+    stageNames.forEach((name,index)=>{const done=index<stage,y=235+index*65,card=this.add.rectangle(630,y,330,52,done?0xd9eedc:0xe8f5e9,.98).setStrokeStyle(3,done?COLORS.green:COLORS.navy),mark=this.add.text(490,y,done?'✓':String(index+1),{fontSize:'18px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5),label=this.add.text(525,y-10,name,{fontSize:'15px',fontStyle:'bold',color:'#153a4a'}),cost=this.add.text(525,y+12,done?'COMPLETE':`${BOAT_REPAIR_COSTS[index]} COINS`,{fontSize:'12px',fontStyle:'bold',color:done?'#55a86f':'#ef6b4a'});items.push(card,mark,label,cost);});
     const routeReady=SaveService.isLocationUnlocked(save,'rocky-cove'),status=stage<3?`REPAIR ${stage+1} OF 3` : routeReady?'ROCKY COVE ROUTE READY':'BOAT READY • FINISH SUNNY PIER MASTERY',statusText=this.add.text(630,425,status,{fontSize:'15px',fontStyle:'bold',color:routeReady?'#55a86f':'#153a4a'}).setOrigin(.5);
     items.push(statusText,this.add.text(270,455,`INVESTED  ${save.boat.investedCoins} / ${BOAT_REPAIR_COSTS.reduce((sum,cost)=>sum+cost,0)} COINS`,{fontSize:'14px',fontStyle:'bold',color:'#4b6973'}).setOrigin(.5));
     if(nextCost!==undefined){const canAfford=save.coins>=nextCost,repair=this.add.text(630,475,canAfford?`REPAIR  ${nextCost}`:`NEED ${nextCost-save.coins} MORE COINS`,{fontSize:'15px',fontStyle:'bold',color:'#fff6dc',backgroundColor:canAfford?'#ef6b4a':'#71858b'}).setPadding(14,8).setOrigin(.5);if(canAfford){repair.setInteractive({useHandCursor:true});repair.on('pointerdown',()=>this.repairCurrentBoat());}items.push(repair);}
