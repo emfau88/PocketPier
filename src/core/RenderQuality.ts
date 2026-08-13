@@ -10,7 +10,11 @@ export interface VisibleGameBounds extends ViewportRect { width:number;height:nu
 export function selectRenderScale(viewportWidth:number,viewportHeight:number,devicePixelRatio:number,coarsePointer:boolean):RenderScale{
   const fitScale=Math.min(viewportWidth/GAME_WIDTH,viewportHeight/GAME_HEIGHT);
   const pixelDemand=Math.max(1,fitScale*Math.max(1,devicePixelRatio));
-  const capped=Math.min(coarsePointer?1.5:2,pixelDemand);
+  // Desktop text benefits much more from a full 2x backing buffer than from
+  // the small GPU saving of the 1.5x tier. In particular, 1536x864 and
+  // 1600x900 used to upscale a 1440x810 canvas, softening every text texture.
+  if(!coarsePointer&&fitScale>=1.25)return 2;
+  const capped=Math.min(2,pixelDemand);
   if(capped>=1.75)return 2;
   if(capped>=1.25)return 1.5;
   return 1;

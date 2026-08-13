@@ -190,6 +190,9 @@ Ergebnis Phase 6: 15 manuell abholbare Harbor Jobs, 13 sichtbare Badges mit Fort
 
 ### 2026-08-13
 
+- Startscreen-Schaerfe korrigiert: Desktop-Ansichten ab 1,25-facher Darstellung rendern intern mit 1920x1080 statt 1440x810; Retina-Mobile darf ebenfalls die 2x-Stufe nutzen.
+- Canvas-CSS-Masse werden gerundet, Startscreen-Hintergrund und Wasser-Shimmer reproduzierbar auf 1920x1080 aufbereitet und die Text-Hierarchie mit robusten Arial-/Georgia-Fontstacks nachgeschaerft.
+- Startscreen-Abstaende und das kompaktere Fortschrittsfeld fuer Desktop und Mobile-Landscape neu ausbalanciert.
 - Gemeinsamen responsiven Menuerahmen mit konsistentem Header, Schliessen-Ziel, Tabs, Buttons und Zustandsfarben eingefuehrt.
 - Tackle Box mit 16 sichtbaren Ausruestungszustaenden und klaren Tier-Pips aufgewertet.
 - Fishbook als echtes offenes Feldbuch gestaltet; Sammelkarten und Live-Texte bleiben scharf gerenderte UI-Elemente.

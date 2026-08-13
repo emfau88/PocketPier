@@ -54,8 +54,9 @@ describe('core logic',()=>{
 
   it('selects capped render tiers for desktop and mobile displays',()=>{
     expect(selectRenderScale(1920,1080,1,false)).toBe(2);
-    expect(selectRenderScale(1366,768,1,false)).toBe(1.5);
-    expect(selectRenderScale(844,390,3,true)).toBe(1.5);
+    expect(selectRenderScale(1366,768,1,false)).toBe(2);
+    expect(selectRenderScale(1536,864,1,false)).toBe(2);
+    expect(selectRenderScale(844,390,3,true)).toBe(2);
     expect(selectRenderScale(667,375,1,true)).toBe(1);
   });
 

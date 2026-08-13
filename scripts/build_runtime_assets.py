@@ -18,8 +18,8 @@ TARGET = ROOT / "src" / "assets" / "runtime"
 # Full-screen art, texture sheets with coordinate-based frames, and the map are
 # kept at their authored dimensions.
 ASSETS: dict[str, tuple[int, int] | None] = {
-    "menu_ocean_morning_base.png": None,
-    "menu_water_shimmer.png": None,
+    "menu_ocean_morning_base.png": (1920, 1080),
+    "menu_water_shimmer.png": (1920, 1080),
     "menu_gull_up.png": (256, 256),
     "menu_gull_glide.png": (256, 256),
     "menu_gull_down.png": (256, 256),
