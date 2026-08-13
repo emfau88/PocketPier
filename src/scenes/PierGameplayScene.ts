@@ -389,14 +389,14 @@ export class PierGameplayScene extends Phaser.Scene {
     this.modalOpen=true;this.pointerSteering=false;this.help.setVisible(false);this.spotsModal?.destroy(true);
     const save=SaveService.load(),items:Phaser.GameObjects.GameObject[]=[],compact=compactViewport(this);
     items.push(...this.createMenuChrome('FISHING SPOTS','CHOOSE YOUR NEXT WATER',()=>this.closeFishingSpots()));
-    const map=this.add.image(480,330,'ui-fishing-spots-map').setDisplaySize(820,342).setAlpha(.14),pin=this.add.image(111,167,'menu-decorations','decor-map-pin').setDisplaySize(42,42);items.push(map,pin);
+    const map=this.add.image(480,330,'ui-fishing-spots-map').setDisplaySize(820,342).setAlpha(.14),pin=this.add.image(111,151,'menu-decorations','decor-map-pin').setDisplaySize(42,42);items.push(map,pin);
     FISHING_LOCATIONS.forEach((location,index)=>{
       const x=205+index*275,unlocked=SaveService.isLocationUnlocked(save,location.id),current=location.id===this.location.id,completed=save.completedLocationIds.includes(location.id);
-      const card=this.add.rectangle(x,330,238,314,unlocked?0xfff6dc:0xc8d2cf,.94).setStrokeStyle(4,current?COLORS.coral:unlocked?COLORS.navy:0x71858b);
-      const area=this.add.text(x,191,`AREA ${location.level}${current?'  •  CURRENT':''}`,{fontSize:compact?'14px':'12px',fontStyle:'bold',color:current?'#ef6b4a':unlocked?'#153a4a':'#71858b'}).setOrigin(.5);
+      const card=this.add.rectangle(x,334,238,300,unlocked?0xfff6dc:0xc8d2cf,.94).setStrokeStyle(4,current?COLORS.coral:unlocked?COLORS.navy:0x71858b);
+      const area=this.add.text(x,197,`AREA ${location.level}${current?'  •  CURRENT':''}`,{fontSize:'12px',fontStyle:'bold',color:current?'#ef6b4a':unlocked?'#153a4a':'#71858b'}).setOrigin(.5);
       const emblem=this.add.image(x,249,this.spotBadgeTexture(location.id)).setDisplaySize(96,96).setTint(unlocked?0xffffff:0x71858b).setAlpha(unlocked?1:.52);
       const name=this.add.text(x,313,unlocked?location.name.toUpperCase():'LOCKED',{fontSize:'19px',fontStyle:'bold',color:'#153a4a',align:'center',wordWrap:{width:210}}).setOrigin(.5);
-      const description=this.add.text(x,358,compact?location.subtitle:location.description,{fontSize:compact?'13px':'11px',fontStyle:'bold',color:'#4b6973',align:'center',wordWrap:{width:195}}).setOrigin(.5);
+      const description=this.add.text(x,358,compact?location.subtitle:location.description,{fontSize:compact?'12px':'11px',fontStyle:'bold',color:'#4b6973',align:'center',wordWrap:{width:195}}).setOrigin(.5);
       const status=current?'CURRENT SPOT':unlocked?(completed?'FISH HERE AGAIN':'FISH HERE'):location.id==='rocky-cove'?'BOAT + AREA 1 MASTERY':'AREA 2 MASTERY';
       const actionItems=this.createMenuButton(x,454,status,unlocked,()=>this.chooseFishingSpot(location.id),210);
       if(unlocked)card.setInteractive({useHandCursor:true}).on('pointerdown',()=>this.chooseFishingSpot(location.id));items.push(card,area,emblem,name,description,...actionItems);
@@ -423,10 +423,10 @@ export class PierGameplayScene extends Phaser.Scene {
       const discovered=this.location.fish.filter(f=>saved.fishStats[f.id]).length;
       items.push(this.add.text(790,110,`${discovered} / ${this.location.fish.length} FOUND`,{fontSize:'15px',fontStyle:'bold',color:'#ffd166'}).setOrigin(1,.5));
       this.location.fish.forEach((fish,i)=>{
-        const col=i%3,row=Math.floor(i/3),x=230+col*250,y=246+row*137,stat=saved.fishStats[fish.id],known=!!stat;
+        const col=i%3,row=Math.floor(i/3),x=230+col*250,y=246+row*140,stat=saved.fishStats[fish.id],known=!!stat;
         const card=this.add.rectangle(x,y,224,116,known?0xe8f5e9:0xd7e1dd,.94).setStrokeStyle(3,known?fish.color:0x6f858a),icon=this.add.image(x-70,y-12,fish.texture).setDisplaySize(68,42).setTint(known?fish.color:0x37505a).setAlpha(known?1:.55);
-        const name=this.add.text(x-24,y-42,known?fish.name:'???',{fontSize:'16px',fontStyle:'bold',color:'#153a4a'}),rarity=this.add.text(x-24,y-18,known?fish.rarity:'UNDISCOVERED',{fontSize:compact?'13px':'11px',fontStyle:'bold',color:known?'#4b6973':'#71858b'});
-        const detail=this.add.text(x-94,y+27,known?`CAUGHT  ${stat.count}\nBEST  ${stat.bestWeight.toFixed(2)} kg` : fish.hint,{fontSize:compact?'14px':'12px',fontStyle:'bold',color:'#153a4a',wordWrap:{width:185},align:'center'}).setOrigin(0,.5);
+        const name=this.add.text(x-24,y-42,known?fish.name:'???',{fontSize:compact?'14px':'15px',fontStyle:'bold',color:'#153a4a'}),rarity=this.add.text(x-24,y-18,known?fish.rarity:'UNDISCOVERED',{fontSize:'11px',fontStyle:'bold',color:known?'#4b6973':'#71858b'});
+        const detail=this.add.text(x-94,y+27,known?`CAUGHT  ${stat.count}\nBEST  ${stat.bestWeight.toFixed(2)} kg` : fish.hint,{fontSize:compact?'12px':'11px',fontStyle:'bold',color:'#153a4a',wordWrap:{width:185},align:'center'}).setOrigin(0,.5);
         items.push(card,icon,name,rarity,detail);
       });
     }else{
@@ -434,7 +434,7 @@ export class PierGameplayScene extends Phaser.Scene {
       items.push(this.add.text(790,110,`${discovered} / ${this.location.treasures.length} FOUND`,{fontSize:'15px',fontStyle:'bold',color:'#ffd166'}).setOrigin(1,.5));
       this.location.treasures.forEach((treasure,i)=>{
         const x=235+i*245,y=330,known=saved.discoveredTreasures.includes(treasure.id),card=this.add.rectangle(x,y,220,225,known?0xe8f5e9:0xd7e1dd,.94).setStrokeStyle(3,known?COLORS.gold:0x6f858a),icon=this.add.image(x,y-38,treasure.texture).setDisplaySize(92,92).setTint(known?0xffffff:0x37505a).setAlpha(known?1:.5);
-        const name=this.add.text(x,y+35,known?treasure.name:'???',{fontSize:'17px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5),hint=this.add.text(x,y+78,known?`FOUND AT ${this.location.name.toUpperCase()}`:treasure.hint,{fontSize:compact?'14px':'12px',fontStyle:'bold',color:'#4b6973',align:'center',wordWrap:{width:175}}).setOrigin(.5);
+        const name=this.add.text(x,y+35,known?treasure.name:'???',{fontSize:compact?'15px':'17px',fontStyle:'bold',color:'#153a4a',align:'center',wordWrap:{width:190}}).setOrigin(.5),hint=this.add.text(x,y+78,known?`FOUND AT ${this.location.name.toUpperCase()}`:treasure.hint,{fontSize:'12px',fontStyle:'bold',color:'#4b6973',align:'center',wordWrap:{width:175}}).setOrigin(.5);
         items.push(card,icon,name,hint);
       });
     }
@@ -462,7 +462,7 @@ export class PierGameplayScene extends Phaser.Scene {
   private openTackleBox(){
     PortalBridge.gameplayStop();
     this.modalOpen=true;this.pointerSteering=false;this.help.setVisible(false);this.tackleModal?.destroy(true);
-    const saved=SaveService.load(),items:Phaser.GameObjects.GameObject[]=[],compact=compactViewport(this);
+    const saved=SaveService.load(),items:Phaser.GameObjects.GameObject[]=[];
     items.push(...this.createMenuChrome('THE TACKLE BOX','PREPARE YOUR GEAR FOR THE NEXT CATCH',()=>this.closeTackleBox()));
     const coins=this.add.text(790,112,`COINS  ${saved.coins}`,{fontSize:'15px',fontStyle:'bold',color:'#ffd166'}).setOrigin(1,.5);
     const caseArt=this.add.image(245,245,'hub-tacklebox-open').setDisplaySize(270,205);
@@ -477,19 +477,19 @@ export class PierGameplayScene extends Phaser.Scene {
       ['bait-icon','bait','BAIT','Slightly better rare-fish odds.']
     ];
     cards.forEach(([frame,id,name,description],i)=>{
-      const col=i%2,row=Math.floor(i/2),x=555+col*155,y=180+row*190;
+      const col=i%2,row=Math.floor(i/2),x=555+col*155,y=230+row*180;
       const level=saved.equipment[id],tierAccent=[COLORS.navy,0x7fbf9a,0x49a99a,COLORS.gold][level];
-      const card=this.add.rectangle(x,y,140,190,0xe8f5e9,.98).setStrokeStyle(level===3?5:3,tierAccent);
-      const icon=this.add.image(x,y-36,'equipment-progression',`${id}-tier-${level}`).setDisplaySize(76,76);
-      const label=this.add.text(x,y+20,name,{fontSize:'16px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
-      const detail=this.add.text(x,y+42,description,{fontSize:compact?'12px':'10px',fontStyle:'bold',align:'center',color:'#4b6973',wordWrap:{width:124}}).setOrigin(.5);
+      const card=this.add.rectangle(x,y,140,166,0xe8f5e9,.98).setStrokeStyle(level===3?5:3,tierAccent);
+      const icon=this.add.image(x,y-47,'equipment-progression',`${id}-tier-${level}`).setDisplaySize(58,58);
+      const label=this.add.text(x,y-12,name,{fontSize:'15px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
+      const detail=this.add.text(x,y+10,description,{fontSize:'10px',fontStyle:'bold',align:'center',color:'#4b6973',wordWrap:{width:124}}).setOrigin(.5);
       const cost=SaveService.nextEquipmentCost(saved,id),buttonText=cost===undefined?'MAXED':`BUY  ${cost}`;
-      const tier=this.add.text(x,y+58,level===3?'MASTERED':`TIER ${level} / 3`,{fontSize:compact?'13px':'11px',fontStyle:'bold',color:level===3?'#55a86f':'#ef6b4a'}).setOrigin(.5);
-      const button=this.add.text(x,y+96,buttonText,{fontSize:compact?'14px':'12px',fontStyle:'bold',color:'#fff6dc',backgroundColor:cost===undefined?'#71858b':saved.coins>=cost?'#ef6b4a':'#9aa8a3'}).setPadding(compact?11:8,compact?7:5).setOrigin(.5);
+      const tier=this.add.text(x,y+34,level===3?'MASTERED':`TIER ${level} / 3`,{fontSize:'11px',fontStyle:'bold',color:level===3?'#55a86f':'#ef6b4a'}).setOrigin(.5);
+      const button=this.add.text(x,y+67,buttonText,{fontSize:'12px',fontStyle:'bold',color:'#fff6dc',backgroundColor:cost===undefined?'#71858b':saved.coins>=cost?'#ef6b4a':'#9aa8a3'}).setPadding(8,5).setOrigin(.5);
       if(cost!==undefined){button.setInteractive({useHandCursor:true});button.on('pointerdown',()=>{AudioService.uiPop();this.confirmEquipmentPurchase(id,name,cost)});}
-      items.push(card,icon,label,detail,tier,button);this.addTierPips(items,x,y+75,level);
+      items.push(card,icon,label,detail,tier,button);this.addTierPips(items,x,y+50,level);
     });
-    const note=this.add.text(670,490,`Prices: ${EQUIPMENT_COSTS.join('  •  ')} coins`,{fontSize:compact?'14px':'12px',fontStyle:'bold',color:'#4b6973'}).setOrigin(.5);
+    const note=this.add.text(245,500,`Prices: ${EQUIPMENT_COSTS.join('  •  ')} coins`,{fontSize:'12px',fontStyle:'bold',color:'#4b6973'}).setOrigin(.5);
     items.push(note);this.tackleModal=this.createResponsiveModal(items,220);
   }
   private confirmEquipmentPurchase(id:EquipmentId,name:string,cost:number){
@@ -507,7 +507,7 @@ export class PierGameplayScene extends Phaser.Scene {
   private openJobs(tab:'jobs'|'badges',badgePage=0){
     PortalBridge.gameplayStop();
     this.modalOpen=true;this.pointerSteering=false;this.help.setVisible(false);this.jobsModal?.destroy(true);
-    const save=SaveService.load();QuestService.ensureActive(save);SaveService.save(save);const items:Phaser.GameObjects.GameObject[]=[],compact=compactViewport(this);
+    const save=SaveService.load();QuestService.ensureActive(save);SaveService.save(save);const items:Phaser.GameObjects.GameObject[]=[];
     items.push(...this.createMenuChrome('HARBOR JOBS','COMPLETE TRIPS • EARN COINS, XP & STICKERS',()=>this.closeJobs()),...this.createMenuTab(330,'JOBS',tab==='jobs',()=>this.openJobs('jobs')),...this.createMenuTab(550,'BADGES',tab==='badges',()=>this.openJobs('badges')));
     const notes=this.add.image(205,296,'harbor-notes').setDisplaySize(220,238);
     items.push(notes);
@@ -519,9 +519,9 @@ export class PierGameplayScene extends Phaser.Scene {
         const emblem=this.add.circle(x-150,y,26,done?COLORS.green:COLORS.gold).setStrokeStyle(2,COLORS.navy);
         const icon=this.add.text(x-150,y,done?'✓':quest.icon,{fontSize:done?'26px':'10px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5);
         const questTitle=this.add.text(x-111,y-28,quest.title,{fontSize:'16px',fontStyle:'bold',color:'#153a4a'});
-        const description=this.add.text(x-111,y-5,quest.description,{fontSize:compact?'14px':'12px',fontStyle:'bold',color:'#4b6973'});
-        const reward=this.add.text(x-111,y+22,`+${quest.coins} COINS   +${quest.xp} XP${quest.sticker?'   +STICKER':''}`,{fontSize:compact?'13px':'11px',fontStyle:'bold',color:'#ef6b4a'});
-        const amount=this.add.text(x+154,y+24,done?'CLAIM':`${progress} / ${quest.target}`,{fontSize:compact?'16px':'15px',fontStyle:'bold',color:done?'#fff6dc':'#153a4a',backgroundColor:done?'#55a86f':undefined}).setPadding(done?(compact?12:9):0,done?(compact?7:5):0).setOrigin(1);
+        const description=this.add.text(x-111,y-5,quest.description,{fontSize:'12px',fontStyle:'bold',color:'#4b6973'});
+        const reward=this.add.text(x-111,y+22,`+${quest.coins} COINS   +${quest.xp} XP${quest.sticker?'   +STICKER':''}`,{fontSize:'11px',fontStyle:'bold',color:'#ef6b4a'});
+        const amount=this.add.text(x+154,y+24,done?'CLAIM':`${progress} / ${quest.target}`,{fontSize:'14px',fontStyle:'bold',color:done?'#fff6dc':'#153a4a',backgroundColor:done?'#55a86f':undefined}).setPadding(done?9:0,done?5:0).setOrigin(1);
         if(done){amount.setInteractive({useHandCursor:true});amount.on('pointerdown',()=>this.claimJob(active.id,x+120,y));}
         items.push(card,emblem,icon,questTitle,description,reward,amount);
       });
@@ -532,9 +532,9 @@ export class PierGameplayScene extends Phaser.Scene {
         const seal=this.add.image(x-182,y,'badge-collection',`badge-${achievement.id}`).setDisplaySize(48,48).setTint(known||ready?0xffffff:0x71858b).setAlpha(known?1:ready?.92:.42);
         const mark=this.add.text(x-161,y+15,ready?'!':known?'✓':`${progress.current}/${progress.target}`,{fontSize:'10px',fontStyle:'bold',color:'#fff6dc',backgroundColor:ready?'#ef6b4a':known?'#55a86f':'#71858b'}).setPadding(4,2).setOrigin(.5);
         const name=this.add.text(x-145,y-13,achievement.title,{fontSize:'15px',fontStyle:'bold',color:'#153a4a'});
-        const description=this.add.text(x-145,y+9,ready?`READY  +${achievement.coins} COINS  +${achievement.xp} XP`:`${achievement.description}  ${progress.current}/${progress.target}`,{fontSize:compact?'12px':'10px',fontStyle:'bold',color:ready?'#ef6b4a':'#4b6973'});
+        const description=this.add.text(x-145,y+9,ready?`READY  +${achievement.coins} COINS  +${achievement.xp} XP`:`${achievement.description}  ${progress.current}/${progress.target}`,{fontSize:'10px',fontStyle:'bold',color:ready?'#ef6b4a':'#4b6973'});
         items.push(card,seal,mark,name,description);
-        if(ready){const claim=this.add.text(x+188,y,'CLAIM',{fontSize:compact?'14px':'12px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#55a86f'}).setPadding(compact?11:8,compact?7:5).setOrigin(1,.5).setInteractive({useHandCursor:true});claim.on('pointerdown',()=>this.claimBadge(achievement.id,x+150,y));items.push(claim);}
+        if(ready){const claim=this.add.text(x+188,y,'CLAIM',{fontSize:'12px',fontStyle:'bold',color:'#fff6dc',backgroundColor:'#55a86f'}).setPadding(8,5).setOrigin(1,.5).setInteractive({useHandCursor:true});claim.on('pointerdown',()=>this.claimBadge(achievement.id,x+150,y));items.push(claim);}
       });
       const pageText=this.add.text(565,490,`PAGE ${page+1} / ${totalPages}`,{fontSize:'12px',fontStyle:'bold',color:'#153a4a'}).setOrigin(.5),previous=this.add.text(430,490,'‹ PREV',{fontSize:'13px',fontStyle:'bold',color:'#fff6dc',backgroundColor:page>0?'#ef6b4a':'#71858b'}).setPadding(10,6).setOrigin(.5),next=this.add.text(700,490,'NEXT ›',{fontSize:'13px',fontStyle:'bold',color:'#fff6dc',backgroundColor:page<totalPages-1?'#ef6b4a':'#71858b'}).setPadding(10,6).setOrigin(.5);items.push(previous,pageText,next);
       if(page>0)previous.setInteractive({useHandCursor:true}).on('pointerdown',()=>this.openJobs('badges',page-1));if(page<totalPages-1)next.setInteractive({useHandCursor:true}).on('pointerdown',()=>this.openJobs('badges',page+1));
@@ -550,7 +550,7 @@ export class PierGameplayScene extends Phaser.Scene {
   private openBoatRepair(){
     PortalBridge.gameplayStop();
     this.modalOpen=true;this.pointerSteering=false;this.help.setVisible(false);this.boatModal?.destroy(true);
-    const save=SaveService.load(),stage=SaveService.boatStage(save),nextCost=SaveService.nextBoatRepairCost(save),items:Phaser.GameObjects.GameObject[]=[],compact=compactViewport(this);
+    const save=SaveService.load(),stage=SaveService.boatStage(save),nextCost=SaveService.nextBoatRepairCost(save),items:Phaser.GameObjects.GameObject[]=[];
     items.push(...this.createMenuChrome('THE QUESTIONABLY SEAWORTHY BOAT',stage===3?'IT FLOATS. THE HARBOR MASTER IS STUNNED.':'TECHNICAL STATUS: FLOATS. MOSTLY.',()=>this.closeBoatRepair()));
     const art=this.add.image(270,285,'hub-boat-states',this.boatFrame(save)).setDisplaySize(330,330),repairArt=this.add.image(630,171,'boat-repair-steps',stage===0?'repair-hull':stage===1?'repair-motor':'repair-outfitting').setDisplaySize(120,40),stageNames=['HULL PATCHED','MOTOR PERSUADED','GULL EVICTED'];
     items.push(art,repairArt);
