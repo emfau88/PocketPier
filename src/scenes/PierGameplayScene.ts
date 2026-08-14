@@ -70,20 +70,26 @@ export class PierGameplayScene extends Phaser.Scene {
     this.layoutSafeArea();this.events.on('render-quality-changed',()=>this.layoutSafeArea());this.beginCast();this.showHubTutorial();
   }
   private drawSurface(){
-    const bg=this.add.image(480,270,'bg-pier-remaster').setDisplaySize(960,540);
+    const rockySurface=this.location.id==='rocky-cove';
+    const surfaceTexture=rockySurface?'bg-pier-rocky':'bg-pier-remaster';
+    const bg=this.add.image(480,270,surfaceTexture).setDisplaySize(960,540);
     const shade=this.add.rectangle(480,270,960,540,0x153a4a,.06);
     const cloudA=this.add.image(165,66,'surface-clouds','cloud-a').setDisplaySize(216,88);
     const cloudB=this.add.image(486,82,'surface-clouds','cloud-b').setDisplaySize(188,87);
     const cloudC=this.add.image(820,102,'surface-clouds','cloud-c').setDisplaySize(208,85);
     this.surfaceClouds=[{sprite:cloudA,speed:1.45},{sprite:cloudB,speed:1.05},{sprite:cloudC,speed:1.25}];
-    const foregroundMaskSource=this.add.graphics().setVisible(false);
-    foregroundMaskSource.fillStyle(0xffffff,1)
-      .fillRect(43,113,32,240)
-      .beginPath().moveTo(43,120).lineTo(166,136).lineTo(166,157).lineTo(43,143).closePath().fillPath()
-      .fillRect(107,139,8,25)
-      .beginPath().moveTo(105,157).lineTo(121,157).lineTo(128,175).lineTo(124,210).lineTo(96,210).lineTo(92,175).closePath().fillPath()
-      .beginPath().moveTo(914,183).lineTo(925,183).lineTo(931,193).lineTo(928,203).lineTo(926,258).lineTo(903,258).lineTo(906,203).lineTo(903,193).closePath().fillPath();
-    const foregroundOccluder=this.add.image(480,270,'bg-pier-remaster').setDisplaySize(960,540).setMask(foregroundMaskSource.createGeometryMask());
+    let foregroundOccluder:Phaser.GameObjects.Image;
+    if(rockySurface)foregroundOccluder=this.add.image(480,270,'fg-pier-rocky').setDisplaySize(960,540);
+    else {
+      const foregroundMaskSource=this.add.graphics().setVisible(false);
+      foregroundMaskSource.fillStyle(0xffffff,1)
+        .fillRect(43,113,32,240)
+        .beginPath().moveTo(43,120).lineTo(166,136).lineTo(166,157).lineTo(43,143).closePath().fillPath()
+        .fillRect(107,139,8,25)
+        .beginPath().moveTo(105,157).lineTo(121,157).lineTo(128,175).lineTo(124,210).lineTo(96,210).lineTo(92,175).closePath().fillPath()
+        .beginPath().moveTo(914,183).lineTo(925,183).lineTo(931,193).lineTo(928,203).lineTo(926,258).lineTo(903,258).lineTo(906,203).lineTo(903,193).closePath().fillPath();
+      foregroundOccluder=this.add.image(480,270,'bg-pier-remaster').setDisplaySize(960,540).setMask(foregroundMaskSource.createGeometryMask());
+    }
     const rearPostRipples=this.makePostRipples(false);
     const jobsNoticeArt=this.add.image(73,270,'hub-jobs-notice').setDisplaySize(130,160).setDepth(3);
     this.noticeBoard=this.add.zone(73,270,92,125).setInteractive({useHandCursor:true}).setDepth(6);

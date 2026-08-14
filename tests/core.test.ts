@@ -5,7 +5,7 @@ import { captureDecayPerSecond, captureSeconds, fishBehavior, movementScale, ver
 import { castQualityFromMarker, currentVector, obstaclesForLocation, pointHitsObstacle, treasureChance, treasureSpawnPoint } from '../src/gameplay/UnderwaterEnvironment';
 import { BOAT_REPAIR_COSTS, BOAT_REPAIR_TOTAL, EQUIPMENT_COSTS, LEVEL_REWARDS, LEVEL_THRESHOLDS, SaveService } from '../src/core/SaveService';
 import { ACHIEVEMENTS, QUESTS, QuestService } from '../src/gameplay/QuestService';
-import { contentCropInsets, scaleToVisibleBounds, selectRenderScale } from '../src/core/RenderQuality';
+import { contentCropInsets, scaleToVisibleBounds, selectRenderScale, shouldUseHighResolutionAssets } from '../src/core/RenderQuality';
 import { LOCATION_ASSETS, MENU_ASSETS, PIER_ASSETS } from '../src/core/AssetManifest';
 import { joystickKnobPosition, virtualJoystickVector } from '../src/gameplay/TouchControls';
 import { bobberStyle, cycleBobberStyle, unlockedBobberStyles } from '../src/gameplay/Cosmetics';
@@ -58,6 +58,12 @@ describe('core logic',()=>{
     expect(selectRenderScale(1536,864,1,false)).toBe(2);
     expect(selectRenderScale(844,390,3,true)).toBe(2);
     expect(selectRenderScale(667,375,1,true)).toBe(1);
+    expect(selectRenderScale(2560,1440,1,false)).toBe(3);
+    expect(selectRenderScale(3840,2160,1,false)).toBe(4);
+    expect(selectRenderScale(2133,1200,1,false)).toBe(2.5);
+    expect(shouldUseHighResolutionAssets(1920,1080,false)).toBe(true);
+    expect(shouldUseHighResolutionAssets(1366,768,false)).toBe(false);
+    expect(shouldUseHighResolutionAssets(844,390,true)).toBe(false);
   });
 
   it('keeps HUD content inside a cover-scaled mobile landscape viewport',()=>{
@@ -231,6 +237,13 @@ describe('runtime asset pipeline',()=>{
     expect(MENU_ASSETS.length).toBeLessThan(PIER_ASSETS.length);
     expect(Object.values(LOCATION_ASSETS).every(assets=>assets.length>=6)).toBe(true);
     expect(MENU_ASSETS.some(asset=>asset.key==='bg-pier-remaster')).toBe(false);
+  });
+
+  it('loads the Rocky Cove surface theme only with area 2',()=>{
+    const rockyKeys=LOCATION_ASSETS['rocky-cove'].map(asset=>asset.key);
+    const sunnyKeys=LOCATION_ASSETS['sunny-pier'].map(asset=>asset.key);
+    expect(rockyKeys).toEqual(expect.arrayContaining(['bg-pier-rocky','fg-pier-rocky']));
+    expect(sunnyKeys).not.toEqual(expect.arrayContaining(['bg-pier-rocky','fg-pier-rocky']));
   });
 
   it('uses unique cache keys across every staged asset group',()=>{

@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from './GameConfig';
 
-export type RenderScale=1|1.5|2;
+export type RenderScale=1|1.5|2|2.5|3|4;
 export interface RenderMetrics { scale:RenderScale;width:number;height:number }
 export interface SafeAreaInsets { top:number;right:number;bottom:number;left:number }
 export interface ViewportRect { left:number;top:number;right:number;bottom:number }
@@ -10,6 +10,13 @@ export interface VisibleGameBounds extends ViewportRect { width:number;height:nu
 export function selectRenderScale(viewportWidth:number,viewportHeight:number,devicePixelRatio:number,coarsePointer:boolean):RenderScale{
   const fitScale=Math.min(viewportWidth/GAME_WIDTH,viewportHeight/GAME_HEIGHT);
   const pixelDemand=Math.max(1,fitScale*Math.max(1,devicePixelRatio));
+  // Large desktop canvases must never be stretched beyond their backing
+  // buffer. Exact 1440p and 4K tiers keep both Phaser text and artwork crisp.
+  if(!coarsePointer){
+    if(fitScale>=3.5)return 4;
+    if(fitScale>=2.35)return 3;
+    if(fitScale>=2.05)return 2.5;
+  }
   // Desktop text benefits much more from a full 2x backing buffer than from
   // the small GPU saving of the 1.5x tier. In particular, 1536x864 and
   // 1600x900 used to upscale a 1440x810 canvas, softening every text texture.
@@ -18,6 +25,17 @@ export function selectRenderScale(viewportWidth:number,viewportHeight:number,dev
   if(capped>=1.75)return 2;
   if(capped>=1.25)return 1.5;
   return 1;
+}
+
+export function shouldUseHighResolutionAssets(viewportWidth:number,viewportHeight:number,coarsePointer:boolean){
+  // Below this point the 1672px masters are already downsampled on screen.
+  // Reserve the larger GPU textures for true Full-HD-and-up desktop output.
+  return !coarsePointer&&Math.min(viewportWidth/GAME_WIDTH,viewportHeight/GAME_HEIGHT)>=1.75;
+}
+
+export function currentHighResolutionAssetPreference(){
+  if(typeof window==='undefined')return false;
+  return shouldUseHighResolutionAssets(window.innerWidth,window.innerHeight,window.matchMedia?.('(pointer: coarse)').matches??false);
 }
 
 export function currentRenderMetrics():RenderMetrics{

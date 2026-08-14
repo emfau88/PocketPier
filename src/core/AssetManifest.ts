@@ -1,5 +1,6 @@
 import type Phaser from 'phaser';
 import type { FishingLocationId } from '../gameplay/FishingLocation';
+import { currentHighResolutionAssetPreference } from './RenderQuality';
 
 interface ImageAsset { kind:'image'; key:string; url:string }
 interface AudioAsset { kind:'audio'; key:string; url:string }
@@ -7,10 +8,12 @@ export type GameAsset=ImageAsset|AudioAsset;
 
 const image=(key:string,url:URL):ImageAsset=>({kind:'image',key,url:url.href});
 const audio=(key:string,url:URL):AudioAsset=>({kind:'audio',key,url:url.href});
+const highResolutionAssets=currentHighResolutionAssetPreference();
+const adaptiveImage=(key:string,standard:URL,highResolution:URL)=>image(key,highResolutionAssets?highResolution:standard);
 
 export const MENU_ASSETS:GameAsset[]=[
-  image('menu-ocean-morning',new URL('../assets/runtime/menu_ocean_morning_base.webp',import.meta.url)),
-  image('menu-water-shimmer',new URL('../assets/runtime/menu_water_shimmer.webp',import.meta.url)),
+  adaptiveImage('menu-ocean-morning',new URL('../assets/runtime/menu_ocean_morning_base.webp',import.meta.url),new URL('../assets/runtime/menu_ocean_morning_base_hq.webp',import.meta.url)),
+  adaptiveImage('menu-water-shimmer',new URL('../assets/runtime/menu_water_shimmer.webp',import.meta.url),new URL('../assets/runtime/menu_water_shimmer_hq.webp',import.meta.url)),
   image('menu-gull-up',new URL('../assets/runtime/menu_gull_up.webp',import.meta.url)),
   image('menu-gull-glide',new URL('../assets/runtime/menu_gull_glide.webp',import.meta.url)),
   image('menu-gull-down',new URL('../assets/runtime/menu_gull_down.webp',import.meta.url)),
@@ -19,7 +22,7 @@ export const MENU_ASSETS:GameAsset[]=[
 ];
 
 export const PIER_ASSETS:GameAsset[]=[
-  image('bg-pier-remaster',new URL('../assets/runtime/bg_sunny_pier_remaster.webp',import.meta.url)),
+  adaptiveImage('bg-pier-remaster',new URL('../assets/runtime/bg_sunny_pier_remaster.webp',import.meta.url),new URL('../assets/runtime/bg_sunny_pier_remaster_hq.webp',import.meta.url)),
   image('surface-clouds',new URL('../assets/runtime/surface_clouds.webp',import.meta.url)),
   image('angler-chair-perspective',new URL('../assets/runtime/character_angler_chair_perspective.webp',import.meta.url)),
   image('hub-cooler',new URL('../assets/runtime/hub_cooler.webp',import.meta.url)),
@@ -27,7 +30,7 @@ export const PIER_ASSETS:GameAsset[]=[
   image('hub-tacklebox-open',new URL('../assets/runtime/hub_tacklebox_open.webp',import.meta.url)),
   image('upgrade-icons',new URL('../assets/runtime/ui_upgrade_icons.webp',import.meta.url)),
   image('equipment-progression',new URL('../assets/runtime/ui_equipment_progression.webp',import.meta.url)),
-  image('fishbook-open',new URL('../assets/runtime/ui_fishbook_open.webp',import.meta.url)),
+  adaptiveImage('fishbook-open',new URL('../assets/runtime/ui_fishbook_open.webp',import.meta.url),new URL('../assets/runtime/ui_fishbook_open_hq.webp',import.meta.url)),
   image('badge-collection',new URL('../assets/runtime/ui_badge_collection.webp',import.meta.url)),
   image('menu-decorations',new URL('../assets/runtime/ui_menu_decorations.webp',import.meta.url)),
   image('boat-repair-steps',new URL('../assets/runtime/ui_boat_repair_steps.webp',import.meta.url)),
@@ -37,7 +40,7 @@ export const PIER_ASSETS:GameAsset[]=[
   image('hook-basic',new URL('../assets/runtime/hook_basic.webp',import.meta.url)),
   image('splash',new URL('../assets/runtime/fx_water_splash.webp',import.meta.url)),
   image('fx-perfect-hook',new URL('../assets/runtime/fx_perfect_hook.webp',import.meta.url)),
-  image('ui-fishing-spots-map',new URL('../assets/runtime/ui_fishing_spots_map.webp',import.meta.url)),
+  adaptiveImage('ui-fishing-spots-map',new URL('../assets/runtime/ui_fishing_spots_map.webp',import.meta.url),new URL('../assets/runtime/ui_fishing_spots_map_hq.webp',import.meta.url)),
   image('ui-spot-sunny',new URL('../assets/runtime/ui_spot_sunny.webp',import.meta.url)),
   image('ui-spot-rocky',new URL('../assets/runtime/ui_spot_rocky.webp',import.meta.url)),
   image('ui-spot-moonlit',new URL('../assets/runtime/ui_spot_moonlit.webp',import.meta.url)),
@@ -60,8 +63,8 @@ export const PIER_ASSETS:GameAsset[]=[
 
 export const LOCATION_ASSETS:Record<FishingLocationId,GameAsset[]>={
   'sunny-pier':[
-    image('bg-underwater',new URL('../assets/runtime/bg_underwater_sunny_pier.webp',import.meta.url)),
-    image('fg-underwater-sunny',new URL('../assets/runtime/fg_underwater_sunny.webp',import.meta.url)),
+    adaptiveImage('bg-underwater',new URL('../assets/runtime/bg_underwater_sunny_pier.webp',import.meta.url),new URL('../assets/runtime/bg_underwater_sunny_pier_hq.webp',import.meta.url)),
+    adaptiveImage('fg-underwater-sunny',new URL('../assets/runtime/fg_underwater_sunny.webp',import.meta.url),new URL('../assets/runtime/fg_underwater_sunny_hq.webp',import.meta.url)),
     image('fish-minnow',new URL('../assets/runtime/fish_minnow_hero.webp',import.meta.url)),
     image('fish-sardine',new URL('../assets/runtime/fish_sardine_hero.webp',import.meta.url)),
     image('fish-stripe-perch',new URL('../assets/runtime/fish_stripe_perch.webp',import.meta.url)),
@@ -73,8 +76,10 @@ export const LOCATION_ASSETS:Record<FishingLocationId,GameAsset[]>={
     image('secret-compass',new URL('../assets/runtime/secret_compass.webp',import.meta.url))
   ],
   'rocky-cove':[
-    image('bg-underwater-rocky',new URL('../assets/runtime/bg_underwater_rocky_cove.webp',import.meta.url)),
-    image('fg-underwater-rocky',new URL('../assets/runtime/fg_underwater_rocky.webp',import.meta.url)),
+    adaptiveImage('bg-pier-rocky',new URL('../assets/runtime/bg_rocky_cove_surface.webp',import.meta.url),new URL('../assets/runtime/bg_rocky_cove_surface_hq.webp',import.meta.url)),
+    adaptiveImage('fg-pier-rocky',new URL('../assets/runtime/fg_rocky_cove_surface.webp',import.meta.url),new URL('../assets/runtime/fg_rocky_cove_surface_hq.webp',import.meta.url)),
+    adaptiveImage('bg-underwater-rocky',new URL('../assets/runtime/bg_underwater_rocky_cove.webp',import.meta.url),new URL('../assets/runtime/bg_underwater_rocky_cove_hq.webp',import.meta.url)),
+    adaptiveImage('fg-underwater-rocky',new URL('../assets/runtime/fg_underwater_rocky.webp',import.meta.url),new URL('../assets/runtime/fg_underwater_rocky_hq.webp',import.meta.url)),
     image('fish-kelp-wrasse',new URL('../assets/runtime/fish_kelp_wrasse.webp',import.meta.url)),
     image('fish-tide-mackerel',new URL('../assets/runtime/fish_tide_mackerel.webp',import.meta.url)),
     image('fish-ember-rockfish',new URL('../assets/runtime/fish_ember_rockfish.webp',import.meta.url)),
@@ -85,8 +90,8 @@ export const LOCATION_ASSETS:Record<FishingLocationId,GameAsset[]>={
     image('treasure-sea-glass-charm',new URL('../assets/runtime/treasure_sea_glass_charm.webp',import.meta.url))
   ],
   'moonlit-trench':[
-    image('bg-underwater-moonlit',new URL('../assets/runtime/bg_underwater_moonlit_trench.webp',import.meta.url)),
-    image('fg-underwater-moonlit',new URL('../assets/runtime/fg_underwater_moonlit.webp',import.meta.url)),
+    adaptiveImage('bg-underwater-moonlit',new URL('../assets/runtime/bg_underwater_moonlit_trench.webp',import.meta.url),new URL('../assets/runtime/bg_underwater_moonlit_trench_hq.webp',import.meta.url)),
+    adaptiveImage('fg-underwater-moonlit',new URL('../assets/runtime/fg_underwater_moonlit.webp',import.meta.url),new URL('../assets/runtime/fg_underwater_moonlit_hq.webp',import.meta.url)),
     image('fish-lantern-fin',new URL('../assets/runtime/fish_lantern_fin.webp',import.meta.url)),
     image('fish-midnight-eel',new URL('../assets/runtime/fish_midnight_eel.webp',import.meta.url)),
     image('fish-royal-starfin',new URL('../assets/runtime/fish_royal_starfin.webp',import.meta.url)),

@@ -188,6 +188,17 @@ Ergebnis Phase 6: 15 manuell abholbare Harbor Jobs, 13 sichtbare Badges mit Fort
 
 ## Aenderungsprotokoll
 
+### 2026-08-14
+
+- Responsive High-Quality-Pipeline ergaenzt: Vollbildszenen, Fishbook und Gebietskarte erhalten kontrolliert nachgeschaerfte 4K-WebP-Derivate fuer Desktop, waehrend Mobile die kompakten Varianten behaelt.
+- Desktop-Renderstufen auf 2,5x, 3x und 4x erweitert; 1440p-, 4K- und breite Browseransichten strecken Canvas und Phaser-Texte nicht mehr ueber ihre interne Aufloesung.
+- Die optionalen Desktop-HQ-Dateien belegen zusammen 6,11 MiB, werden aber weiterhin gebietsweise und nur auf geeigneten Desktop-Viewports geladen.
+- Rocky Cove um eine eigene ImageGen-Oberwasserszenerie erweitert; der Gebietseindruck beginnt jetzt bereits am Pier statt erst unter Wasser.
+- Gebietsspezifischen, pixelgenau abgeleiteten Vordergrund-Layer integriert, damit animierte Wolken hinter Felsen und Laternenkonstruktion vorbeiziehen.
+- Sunny Pier bleibt technisch und visuell unveraendert; Rocky-Cove-Oberflaechenassets werden erst beim Wechsel in Gebiet 2 geladen.
+- Zwei komprimierte Runtime-Assets mit zusammen rund 249 KB ergaenzt und die reproduzierbare Asset-Pipeline entsprechend erweitert.
+- Desktop und Mobile-Landscape visuell ohne Layer-, Positions- oder Browserfehler abgenommen.
+
 ### 2026-08-13
 
 - Gebietswechsel am Pier dauerhaft ueber den Angler erreichbar gemacht; gesperrte Gebiete erklaeren ihre Anforderungen weiterhin im Fishing-Spots-Menue.
