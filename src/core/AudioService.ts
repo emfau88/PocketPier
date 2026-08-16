@@ -42,8 +42,8 @@ export class AudioService {
   static resumeAll(){if(!this.isMuted()){this.manager?.resumeAll();this.applyAmbientContext()}}
 
   private static layers():Layer[]{
-    if(this.ambientContext==='menu')return [{key:'music-sunset-plains',volume:.07},{key:'ambient-harbor-waves',volume:.15}];
-    if(this.ambientContext==='harbor')return [{key:'music-sunset-plains',volume:.055},{key:'ambient-harbor-waves',volume:.2}];
+    if(this.ambientContext==='menu')return [{key:'music-sunset-plains',volume:.0805},{key:'ambient-harbor-waves',volume:.15}];
+    if(this.ambientContext==='harbor')return [{key:'music-sunset-plains',volume:.06325},{key:'ambient-harbor-waves',volume:.2}];
     if(this.ambientContext==='underwater-sunny')return [{key:'ambient-underwater-sunny',volume:.3}];
     if(this.ambientContext==='underwater-rocky')return [{key:'ambient-underwater-rocky',volume:.34}];
     if(this.ambientContext==='underwater-moonlit')return [{key:'ambient-underwater-moonlit',volume:.4}];
