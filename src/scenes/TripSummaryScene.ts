@@ -17,6 +17,7 @@ export class TripSummaryScene extends Phaser.Scene {
 
   create(){
     configureSceneRendering(this);
+    AudioService.bind(this.sound);AudioService.enterHarbor();
     this.cameras.main.setBackgroundColor(COLORS.navy);
     const safe=safeAreaInsets(this),bounds=visibleGameBounds(this),compact=compactViewport(this);
     const save=SaveService.load(),startingCoins=save.coins,startingXp=save.xp,previousLevel=SaveService.levelProgress(save.xp).level;

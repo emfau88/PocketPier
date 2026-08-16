@@ -6,7 +6,7 @@ import { castQualityFromMarker, currentVector, obstaclesForLocation, pointHitsOb
 import { BOAT_REPAIR_COSTS, BOAT_REPAIR_TOTAL, EQUIPMENT_COSTS, LEVEL_REWARDS, LEVEL_THRESHOLDS, SaveService } from '../src/core/SaveService';
 import { ACHIEVEMENTS, QUESTS, QuestService } from '../src/gameplay/QuestService';
 import { contentCropInsets, scaleToVisibleBounds, selectRenderScale, shouldUseHighResolutionAssets } from '../src/core/RenderQuality';
-import { LOCATION_ASSETS, MENU_ASSETS, PIER_ASSETS } from '../src/core/AssetManifest';
+import { LOCATION_ASSETS, MENU_ASSETS, OPTIONAL_MUSIC_ASSETS, PIER_ASSETS } from '../src/core/AssetManifest';
 import { joystickKnobPosition, virtualJoystickVector } from '../src/gameplay/TouchControls';
 import { bobberStyle, cycleBobberStyle, unlockedBobberStyles } from '../src/gameplay/Cosmetics';
 import { FISHING_LOCATIONS } from '../src/gameplay/FishingLocation';
@@ -231,12 +231,13 @@ describe('core logic',()=>{
 
 describe('runtime asset pipeline',()=>{
   const locationAssets=Object.values(LOCATION_ASSETS).flat();
-  const allAssets=[...MENU_ASSETS,...PIER_ASSETS,...locationAssets];
+  const allAssets=[...MENU_ASSETS,...OPTIONAL_MUSIC_ASSETS,...PIER_ASSETS,...locationAssets];
 
   it('keeps the boot payload separate from pier and location content',()=>{
     expect(MENU_ASSETS.length).toBeLessThan(PIER_ASSETS.length);
     expect(Object.values(LOCATION_ASSETS).every(assets=>assets.length>=6)).toBe(true);
     expect(MENU_ASSETS.some(asset=>asset.key==='bg-pier-remaster')).toBe(false);
+    expect(MENU_ASSETS.some(asset=>asset.key==='music-sunset-plains')).toBe(false);
   });
 
   it('loads the Rocky Cove surface theme only with area 2',()=>{

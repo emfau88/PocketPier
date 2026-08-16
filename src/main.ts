@@ -6,6 +6,7 @@ import { TripSummaryScene } from './scenes/TripSummaryScene';
 import { LoadingScene } from './scenes/LoadingScene';
 import { RENDER_HEIGHT, RENDER_WIDTH } from './core/RenderQuality';
 import { PortalBridge } from './core/PortalBridge';
+import { AudioService } from './core/AudioService';
 
 void PortalBridge.init();
 const game=new Phaser.Game({
@@ -17,5 +18,5 @@ const game=new Phaser.Game({
   scene: [BootScene, MainMenuScene, LoadingScene, PierGameplayScene, TripSummaryScene],
   render: { antialias: true, antialiasGL:true, pixelArt: false, roundPixels:true }
 });
-window.addEventListener('pocketpier:ad-started',()=>game.loop.sleep());
-window.addEventListener('pocketpier:ad-finished',()=>game.loop.wake());
+window.addEventListener('pocketpier:ad-started',()=>{AudioService.pauseAll();game.loop.sleep()});
+window.addEventListener('pocketpier:ad-finished',()=>{game.loop.wake();AudioService.resumeAll()});

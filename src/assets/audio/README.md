@@ -21,4 +21,26 @@ Selected from the locally supplied `400 Sounds Pack`. The project owner confirme
 | `claim_chime.wav` | `Musical Effects/steel_drums_chime_positive.wav` | Job and badge claims |
 | `level_up.wav` | `Musical Effects/steel_drums_level_complete.wav` | Level up |
 
-All files are stereo PCM WAV at 44.1 kHz. Synthetic Web Audio tones remain as runtime fallbacks when a sample cannot play.
+All event-SFX masters are stereo PCM WAV at 44.1 kHz. Synthetic Web Audio
+tones remain as runtime fallbacks when a sample cannot play.
+
+## Music and ambience
+
+The ambient layer deliberately stays quieter than the event sounds. Music is
+loaded after the main menu is already visible so the first mobile loading screen
+does not wait for the long track.
+
+| Runtime file | Supplied source | In-game use | License supplied with asset |
+| --- | --- | --- | --- |
+| `music_sunset_plains.m4a` | `Sunset Plains` — Yoiyami | Very quiet menu and harbor music | CC0 |
+| `ambient_harbor_waves.m4a` | `18363__jasinski__alkaibeach` wave sample | Looping harbor water bed | CC0 |
+| `seagull_1.m4a` … `seagull_4.m4a` | `Solo Seagull Sound Effects` | Random calls synchronized with visible gulls | CC0 |
+| `ambient_underwater_sunny.m4a` | `loop_bubbles_02.ogg` — rubberduck | Sunny Pier underwater bed | CC0 |
+| `ambient_underwater_rocky.m4a` | `loop_water_02.ogg` — rubberduck | Rocky Cove current bed | CC0 |
+| `ambient_underwater_moonlit.m4a` | `loop_water_03.ogg` — rubberduck | Low-pass Moonlit Trench bed | CC0 |
+| `bubble_1.m4a` … `bubble_3.m4a` | `Bubble Sound Effects` — BMacZero | Occasional underwater details | CC0 |
+| `reel.m4a` | `reel.wav`, `Fisheefects` — Memoraphile | Reel-in movement | Use permitted with or without attribution |
+
+The project owner supplied these source files and confirmed their use is
+permitted. Runtime copies use AAC at 64–80 kbit/s; the original 60.4 MiB music
+WAV becomes a 3.2 MiB browser asset. Only the selected sounds are shipped.

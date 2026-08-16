@@ -18,7 +18,18 @@ export const MENU_ASSETS:GameAsset[]=[
   image('menu-gull-glide',new URL('../assets/runtime/menu_gull_glide.webp',import.meta.url)),
   image('menu-gull-down',new URL('../assets/runtime/menu_gull_down.webp',import.meta.url)),
   image('bobber-basic',new URL('../assets/runtime/bobber_basic.webp',import.meta.url)),
-  audio('sfx-ui-select',new URL('../assets/audio/runtime/ui_select.m4a',import.meta.url))
+  audio('sfx-ui-select',new URL('../assets/audio/runtime/ui_select.m4a',import.meta.url)),
+  audio('ambient-harbor-waves',new URL('../assets/audio/runtime/ambient_harbor_waves.m4a',import.meta.url)),
+  audio('ambient-seagull-1',new URL('../assets/audio/runtime/seagull_1.m4a',import.meta.url)),
+  audio('ambient-seagull-2',new URL('../assets/audio/runtime/seagull_2.m4a',import.meta.url)),
+  audio('ambient-seagull-3',new URL('../assets/audio/runtime/seagull_3.m4a',import.meta.url)),
+  audio('ambient-seagull-4',new URL('../assets/audio/runtime/seagull_4.m4a',import.meta.url))
+];
+
+// The long music track loads behind the visible menu instead of extending the
+// first mobile loading screen. Ambient waves and UI audio remain immediately ready.
+export const OPTIONAL_MUSIC_ASSETS:GameAsset[]=[
+  audio('music-sunset-plains',new URL('../assets/audio/runtime/music_sunset_plains.m4a',import.meta.url))
 ];
 
 export const PIER_ASSETS:GameAsset[]=[
@@ -55,6 +66,10 @@ export const PIER_ASSETS:GameAsset[]=[
   audio('sfx-cast',new URL('../assets/audio/runtime/cast_twang.m4a',import.meta.url)),
   audio('sfx-splash',new URL('../assets/audio/runtime/water_splash.m4a',import.meta.url)),
   audio('sfx-bite',new URL('../assets/audio/runtime/bite_plop.m4a',import.meta.url)),
+  audio('sfx-reel',new URL('../assets/audio/runtime/reel.m4a',import.meta.url)),
+  audio('ambient-bubble-1',new URL('../assets/audio/runtime/bubble_1.m4a',import.meta.url)),
+  audio('ambient-bubble-2',new URL('../assets/audio/runtime/bubble_2.m4a',import.meta.url)),
+  audio('ambient-bubble-3',new URL('../assets/audio/runtime/bubble_3.m4a',import.meta.url)),
   audio('sfx-catch',new URL('../assets/audio/runtime/catch_chime.m4a',import.meta.url)),
   audio('sfx-treasure',new URL('../assets/audio/runtime/treasure_mystery.m4a',import.meta.url)),
   audio('sfx-claim',new URL('../assets/audio/runtime/claim_chime.m4a',import.meta.url)),
@@ -63,6 +78,7 @@ export const PIER_ASSETS:GameAsset[]=[
 
 export const LOCATION_ASSETS:Record<FishingLocationId,GameAsset[]>={
   'sunny-pier':[
+    audio('ambient-underwater-sunny',new URL('../assets/audio/runtime/ambient_underwater_sunny.m4a',import.meta.url)),
     adaptiveImage('bg-underwater',new URL('../assets/runtime/bg_underwater_sunny_pier.webp',import.meta.url),new URL('../assets/runtime/bg_underwater_sunny_pier_hq.webp',import.meta.url)),
     adaptiveImage('fg-underwater-sunny',new URL('../assets/runtime/fg_underwater_sunny.webp',import.meta.url),new URL('../assets/runtime/fg_underwater_sunny_hq.webp',import.meta.url)),
     image('fish-minnow',new URL('../assets/runtime/fish_minnow_hero.webp',import.meta.url)),
@@ -76,6 +92,7 @@ export const LOCATION_ASSETS:Record<FishingLocationId,GameAsset[]>={
     image('secret-compass',new URL('../assets/runtime/secret_compass.webp',import.meta.url))
   ],
   'rocky-cove':[
+    audio('ambient-underwater-rocky',new URL('../assets/audio/runtime/ambient_underwater_rocky.m4a',import.meta.url)),
     adaptiveImage('bg-pier-rocky',new URL('../assets/runtime/bg_rocky_cove_surface.webp',import.meta.url),new URL('../assets/runtime/bg_rocky_cove_surface_hq.webp',import.meta.url)),
     adaptiveImage('fg-pier-rocky',new URL('../assets/runtime/fg_rocky_cove_surface.webp',import.meta.url),new URL('../assets/runtime/fg_rocky_cove_surface_hq.webp',import.meta.url)),
     adaptiveImage('bg-underwater-rocky',new URL('../assets/runtime/bg_underwater_rocky_cove.webp',import.meta.url),new URL('../assets/runtime/bg_underwater_rocky_cove_hq.webp',import.meta.url)),
@@ -90,6 +107,7 @@ export const LOCATION_ASSETS:Record<FishingLocationId,GameAsset[]>={
     image('treasure-sea-glass-charm',new URL('../assets/runtime/treasure_sea_glass_charm.webp',import.meta.url))
   ],
   'moonlit-trench':[
+    audio('ambient-underwater-moonlit',new URL('../assets/audio/runtime/ambient_underwater_moonlit.m4a',import.meta.url)),
     adaptiveImage('bg-underwater-moonlit',new URL('../assets/runtime/bg_underwater_moonlit_trench.webp',import.meta.url),new URL('../assets/runtime/bg_underwater_moonlit_trench_hq.webp',import.meta.url)),
     adaptiveImage('fg-underwater-moonlit',new URL('../assets/runtime/fg_underwater_moonlit.webp',import.meta.url),new URL('../assets/runtime/fg_underwater_moonlit_hq.webp',import.meta.url)),
     image('fish-lantern-fin',new URL('../assets/runtime/fish_lantern_fin.webp',import.meta.url)),

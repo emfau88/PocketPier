@@ -4,12 +4,15 @@ import { COLORS, GAME_WIDTH } from '../core/GameConfig';
 import { compactViewport, configureSceneRendering, visibleGameBounds } from '../core/RenderQuality';
 import { SaveService } from '../core/SaveService';
 import { PortalBridge } from '../core/PortalBridge';
+import { OPTIONAL_MUSIC_ASSETS, queueMissingAssets } from '../core/AssetManifest';
 
 export class MainMenuScene extends Phaser.Scene {
   constructor(){super('Menu')}
 
   create(){
     configureSceneRendering(this);
+    AudioService.bind(this.sound);AudioService.enterMenu();
+    if(queueMissingAssets(this,OPTIONAL_MUSIC_ASSETS)>0){this.load.once('complete',()=>AudioService.enterMenu());this.load.start()}
     PortalBridge.gameplayStop();PortalBridge.clearGameContext();
     const w=GAME_WIDTH,reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     const save=SaveService.load(),progress=SaveService.levelProgress(save.xp);
@@ -47,6 +50,10 @@ export class MainMenuScene extends Phaser.Scene {
       fontFamily:'Arial, sans-serif',fontSize:'12px',fontStyle:'bold',color:'#fff3ce',stroke:'#153a4a',strokeThickness:3
     }).setOrigin(.5).setLetterSpacing(1).setDepth(20);
     const progressHud=this.createProgressHud(progress.level,xpLabel,save.coins);
+    const soundToggle=this.add.text(0,0,AudioService.isMuted()?'SOUND  OFF':'SOUND  ON',{
+      fontFamily:'Arial, sans-serif',fontSize:'11px',fontStyle:'bold',color:'#fff3ce',backgroundColor:'#153a4a'
+    }).setPadding(10,7).setOrigin(1,0).setDepth(32).setInteractive({useHandCursor:true});
+    soundToggle.on('pointerdown',()=>{AudioService.unlock();const muted=AudioService.toggleMuted();soundToggle.setText(muted?'SOUND  OFF':'SOUND  ON')});
 
     const layout=()=>{
       const bounds=visibleGameBounds(this),compact=compactViewport(this),top=Math.max(bounds.top+(compact?39:52),compact?73:96),startY=Math.min(426,bounds.bottom-(compact?77:58));
@@ -61,6 +68,7 @@ export class MainMenuScene extends Phaser.Scene {
       startButton.setPosition(bounds.centerX,startY+8).setScale(compact?.88:1);
       inputHint.setVisible(!compact).setPosition(bounds.centerX,startY+58).setFontSize('12px');
       progressHud.setScale(compact?.82:1).setPosition(bounds.left+(compact?105:128),bounds.top+(compact?23:36));
+      soundToggle.setPosition(bounds.right-(compact?10:18),bounds.top+(compact?9:16)).setFontSize(compact?'10px':'11px');
     };
     layout();this.events.on('render-quality-changed',layout);
 
@@ -114,7 +122,7 @@ export class MainMenuScene extends Phaser.Scene {
 
   private flyGull(){
     const keys=['menu-gull-up','menu-gull-glide','menu-gull-down'],y=Phaser.Math.Between(168,230);
-    const gull=this.add.image(-80,y,keys[0]).setDisplaySize(115,115).setDepth(4);
+    const gull=this.add.image(-80,y,keys[0]).setDisplaySize(115,115).setDepth(4);AudioService.seagull();
     let frame=0;
     const flap=this.time.addEvent({delay:165,loop:true,callback:()=>{frame=(frame+1)%keys.length;gull.setTexture(keys[frame]).setDisplaySize(115,115)}});
     this.tweens.add({targets:gull,x:1040,y:y-Phaser.Math.Between(6,20),duration:Phaser.Math.Between(8200,9800),ease:'Sine.inOut',onComplete:()=>{flap.destroy();gull.destroy();this.scheduleGull()}});

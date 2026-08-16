@@ -1,4 +1,6 @@
 node_modules/
 dist/
+.local-assets/*
+!.local-assets/README.md
 .DS_Store
 *.log
